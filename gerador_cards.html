@@ -628,8 +628,13 @@
         </div>
 
         <div class="video-config-row">
+          <label>Transição Oficial dos 3 Cards (Estilo GokuShow):</label>
+          <input type="checkbox" id="enableIntroTransition" checked style="width:22px; height:22px; accent-color:#ff4757; cursor:pointer;">
+        </div>
+
+        <div class="video-config-row">
           <label>Resolução de Saída:</label>
-          <span style="font-weight:700; color:#2ed573; font-size:13px;">1920 x 1080 (Full HD)</span>
+          <span style="font-weight:700; color:#2ed573; font-size:13px;">1920 x 1080 (Full HD 16:9)</span>
         </div>
 
         <div class="video-config-row">
@@ -637,7 +642,12 @@
           <span id="estimatedDuration" style="font-weight:700; color:#ffa502; font-size:13px;">20 segundos</span>
         </div>
 
-        <div style="display:flex; gap:12px; margin-top:20px;">
+        <div style="background:rgba(46, 213, 115, 0.12); border:1px solid rgba(46, 213, 115, 0.4); border-radius:8px; padding:12px 14px; margin: 16px 0; font-size:13px; color:#2ed573; text-align:left; display:flex; align-items:flex-start; gap:10px;">
+          <span style="font-size:18px;">📱</span>
+          <span><strong>No Celular (iPhone / Android):</strong> Ao finalizar, abrirá automaticamente a tela do sistema. Basta tocar em <strong>"Salvar Vídeo"</strong> para o arquivo ir direto para a sua <strong>Galeria de Fotos</strong>!</span>
+        </div>
+
+        <div style="display:flex; gap:12px; margin-top:16px;">
           <button class="btn-secondary" style="flex:1;" onclick="fecharModalExportarVideo()">Cancelar</button>
           <button class="btn-youtube" style="flex:1;" onclick="iniciarGravacaoVideo()">Iniciar Renderização</button>
         </div>
@@ -837,95 +847,155 @@
       conveyor.style.transform = `translateX(-${scrollPos}px)`;
     }
 
-    /* DESENHO DOS CARDS NO CANVAS */
+    /* ========================================================
+       DESENHO MODULAR DOS COMPONENTES DO CARD NO CANVAS
+       ======================================================== */
+    function desenharSlotTexto(ctx, card, x, y, w, h, alpha = 1) {
+      if (!card || alpha <= 0) return;
+      ctx.save();
+      ctx.globalAlpha = Math.min(1, Math.max(0, alpha));
+
+      const imgH = h * 0.66;
+      const txtY = y + imgH;
+      const txtH = h - imgH;
+
+      // Caixa de texto inferior (preto estilizado com contorno sutil)
+      ctx.fillStyle = '#0d0e11';
+      ctx.fillRect(x + 2, txtY + 2, w - 4, txtH - 4);
+      ctx.strokeStyle = '#262c37';
+      ctx.lineWidth = 4;
+      ctx.strokeRect(x + 2, txtY + 2, w - 4, txtH - 4);
+
+      // Renderizar texto
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 30px Montserrat, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+
+      const palavras = (card.text || '').split(' ');
+      let linhas = [];
+      let linhaAtual = '';
+      const maxW = w - 60;
+
+      palavras.forEach(p => {
+        const teste = linhaAtual ? linhaAtual + ' ' + p : p;
+        if (ctx.measureText(teste).width > maxW) {
+          linhas.push(linhaAtual);
+          linhaAtual = p;
+        } else {
+          linhaAtual = teste;
+        }
+      });
+      if (linhaAtual) linhas.push(linhaAtual);
+
+      const totalTextH = linhas.length * 40;
+      let startY = txtY + (txtH / 2) - (totalTextH / 2) + 20;
+
+      linhas.forEach(linha => {
+        ctx.fillText(linha, x + (w / 2), startY);
+        startY += 40;
+      });
+
+      ctx.restore();
+    }
+
+    function desenharSlotImagem(ctx, card, x, y, w, h, alpha = 1, scale = 1) {
+      if (!card || alpha <= 0) return;
+      ctx.save();
+      ctx.globalAlpha = Math.min(1, Math.max(0, alpha));
+
+      const imgH = h * 0.66;
+
+      // Borda e fundo do card
+      ctx.fillStyle = '#16181d';
+      ctx.strokeStyle = '#2e3542';
+      ctx.lineWidth = 4;
+      ctx.fillRect(x, y, w, imgH);
+      ctx.strokeRect(x, y, w, imgH);
+
+      if (card._loadedImg) {
+        const img = card._loadedImg;
+        const s = Math.max(w / img.width, imgH / img.height) * scale;
+        const sw = w / s;
+        const sh = imgH / s;
+        const sx = (img.width - sw) / 2;
+        const sy = (img.height - sh) / 2;
+
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(x + 2, y + 2, w - 4, imgH - 4);
+        ctx.clip();
+        ctx.drawImage(img, sx, sy, sw, sh, x + 2, y + 2, w - 4, imgH - 4);
+        ctx.restore();
+      } else {
+        ctx.fillStyle = '#1f242e';
+        ctx.fillRect(x + 2, y + 2, w - 4, imgH - 4);
+        ctx.fillStyle = '#747d8c';
+        ctx.font = '22px Montserrat, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(`Imagem #${card.title}`, x + (w / 2), y + (imgH / 2));
+      }
+
+      ctx.restore();
+    }
+
+    /* DESENHO COMPLETO DO CARD (USADO NA FAIXA PANORÂMICA) */
     function desenharCardNoCanvas(ctx, card, x, y, w, h) {
       return new Promise((resolve) => {
-        // Fundo do card
-        ctx.fillStyle = '#16181d';
-        ctx.strokeStyle = '#2e3542';
-        ctx.lineWidth = 4;
-        ctx.fillRect(x, y, w, h);
-        ctx.strokeRect(x, y, w, h);
-
-        const imgH = h * 0.66;
-        const txtY = y + imgH;
-        const txtH = h - imgH;
-
-        const desenharConteudo = () => {
-          // Divisória
-          ctx.strokeStyle = '#262c37';
-          ctx.lineWidth = 4;
-          ctx.beginPath();
-          ctx.moveTo(x, txtY);
-          ctx.lineTo(x + w, txtY);
-          ctx.stroke();
-
-          // Caixa de texto inferior
-          ctx.fillStyle = '#0d0e11';
-          ctx.fillRect(x + 2, txtY + 2, w - 4, txtH - 4);
-
-          // Renderizar texto
-          ctx.fillStyle = '#ffffff';
-          ctx.font = 'bold 30px Montserrat, sans-serif';
-          ctx.textAlign = 'center';
-          ctx.textBaseline = 'middle';
-
-          const palavras = (card.text || '').split(' ');
-          let linhas = [];
-          let linhaAtual = '';
-          const maxW = w - 60;
-
-          palavras.forEach(p => {
-            const teste = linhaAtual ? linhaAtual + ' ' + p : p;
-            if (ctx.measureText(teste).width > maxW) {
-              linhas.push(linhaAtual);
-              linhaAtual = p;
-            } else {
-              linhaAtual = teste;
-            }
-          });
-          if (linhaAtual) linhas.push(linhaAtual);
-
-          const totalTextH = linhas.length * 40;
-          let startY = txtY + (txtH / 2) - (totalTextH / 2) + 20;
-
-          linhas.forEach(linha => {
-            ctx.fillText(linha, x + (w / 2), startY);
-            startY += 40;
-          });
-
-          resolve();
-        };
-
-        if (card.image) {
+        // Pré-carrega se necessário
+        if (card.image && !card._loadedImg) {
           const img = new Image();
           img.onload = () => {
-            const scale = Math.max(w / img.width, imgH / img.height);
-            const sw = w / scale;
-            const sh = imgH / scale;
-            const sx = (img.width - sw) / 2;
-            const sy = (img.height - sh) / 2;
-
-            ctx.save();
-            ctx.beginPath();
-            ctx.rect(x + 2, y + 2, w - 4, imgH - 4);
-            ctx.clip();
-            ctx.drawImage(img, sx, sy, sw, sh, x + 2, y + 2, w - 4, imgH - 4);
-            ctx.restore();
-
-            desenharConteudo();
+            card._loadedImg = img;
+            desenharSlotImagem(ctx, card, x, y, w, h, 1, 1);
+            desenharSlotTexto(ctx, card, x, y, w, h, 1);
+            resolve();
+          };
+          img.onerror = () => {
+            desenharSlotImagem(ctx, card, x, y, w, h, 1, 1);
+            desenharSlotTexto(ctx, card, x, y, w, h, 1);
+            resolve();
           };
           img.src = card.image;
         } else {
-          ctx.fillStyle = '#1f242e';
-          ctx.fillRect(x + 2, y + 2, w - 4, imgH - 4);
-          ctx.fillStyle = '#747d8c';
-          ctx.font = '22px Montserrat, sans-serif';
-          ctx.textAlign = 'center';
-          ctx.fillText(`Imagem #${card.title}`, x + (w / 2), y + (imgH / 2));
-          desenharConteudo();
+          desenharSlotImagem(ctx, card, x, y, w, h, 1, 1);
+          desenharSlotTexto(ctx, card, x, y, w, h, 1);
+          resolve();
         }
       });
+    }
+
+    /* RENDERIZAÇÃO DA TRANSIÇÃO DOS 3 PRIMEIROS CARDS (ESTILO OFICIAL GOKUSHOW) */
+    function renderizarQuadroIntro(outCtx, cards, tempoAtual) {
+      // Fundo cinematográfico característico da transição oficial
+      outCtx.fillStyle = '#5c616c';
+      outCtx.fillRect(0, 0, 1920, 1080);
+
+      const slots = [
+        { x: 25, y: 20, w: 620, h: 1040, txtT: 0.2, imgT: 1.8 },
+        { x: 670, y: 20, w: 620, h: 1040, txtT: 2.5, imgT: 3.9 },
+        { x: 1315, y: 20, w: 620, h: 1040, txtT: 4.6, imgT: 6.0 }
+      ];
+
+      for (let i = 0; i < slots.length; i++) {
+        if (!cards[i]) continue;
+        const slot = slots[i];
+
+        // 1. Texto da cena aparece primeiro
+        if (tempoAtual >= slot.txtT) {
+          const alphaTxt = Math.min(1, (tempoAtual - slot.txtT) / 0.35);
+          desenharSlotTexto(outCtx, cards[i], slot.x, slot.y, slot.w, slot.h, alphaTxt);
+        }
+
+        // 2. Imagem surge logo em seguida
+        if (tempoAtual >= slot.imgT) {
+          const progressImg = Math.min(1, (tempoAtual - slot.imgT) / 0.3);
+          const alphaImg = progressImg;
+          // Efeito sutil de pop in (scale 0.96 até 1.0)
+          const scaleImg = 0.96 + (0.04 * progressImg);
+          desenharSlotImagem(outCtx, cards[i], slot.x, slot.y, slot.w, slot.h, alphaImg, scaleImg);
+        }
+      }
     }
 
     async function baixarCardIndividual(id) {
@@ -1043,12 +1113,20 @@
       const outCtx = outCanvas.getContext('2d');
 
       const durPorCard = parseFloat(document.getElementById('videoCardDuration').value) || 5;
-      const duracaoTotal = cards.length * durPorCard; // segundos
+      const enableIntro = document.getElementById('enableIntroTransition')?.checked !== false;
+
+      // Se a transição oficial dos 3 cards estiver ativa:
+      const introDur = enableIntro ? 7.5 : 0; // segundos de intro estilo GokuShow
+      const scrollDur = enableIntro 
+        ? Math.max(4, (cards.length - 1) * durPorCard) 
+        : (cards.length * durPorCard);
+      const duracaoTotal = introDur + scrollDur;
+
       const fps = 30;
       const totalFrames = Math.round(duracaoTotal * fps);
       const maxDeslocamento = Math.max(0, faixaW - 1920);
 
-      // Determinar formato suportado pelo navegador
+      // Determinar formato suportado pelo navegador (priorizando MP4 para iOS/Android)
       let mimeType = 'video/mp4; codecs="avc1.42E01E"';
       let extensao = 'mp4';
       if (!MediaRecorder.isTypeSupported(mimeType)) {
@@ -1066,7 +1144,7 @@
       const stream = outCanvas.captureStream(fps);
       const recorder = new MediaRecorder(stream, {
         mimeType: mimeType,
-        videoBitsPerSecond: 8000000 // 8 Mbps (alta qualidade Full HD)
+        videoBitsPerSecond: 8000000 // 8 Mbps (alta fidelidade Full HD)
       });
 
       const chunks = [];
@@ -1083,46 +1161,79 @@
 
       recorder.start();
 
-      // 3. Renderizar cada frame com deslocamento suave
-      statusText.innerText = `3/3: Gravando vídeo em tempo real (${duracaoTotal}s)...`;
+      // 3. Renderizar cada frame com a transição oficial dos 3 cards + scroll contínuo
+      statusText.innerText = `3/3: Gravando vídeo em tempo real (${duracaoTotal.toFixed(1)}s)...`;
 
       const frameDelay = 1000 / fps;
       for (let frame = 0; frame <= totalFrames; frame++) {
-        const progresso = frame / totalFrames;
-        const currentScrollX = progresso * maxDeslocamento;
+        const tempoAtual = frame / fps;
 
-        // Fundo
-        outCtx.fillStyle = '#0f1013';
-        outCtx.fillRect(0, 0, 1920, 1080);
+        if (enableIntro && tempoAtual < introDur) {
+          // Fase 1: Transição oficial dos 3 primeiros cards (Slot 1 texto/foto -> Slot 2 texto/foto -> Slot 3 texto/foto)
+          renderizarQuadroIntro(outCtx, cards, tempoAtual);
+        } else {
+          // Fase 2: Rolagem contínua da esteira para os próximos cards
+          const tempoScroll = enableIntro ? (tempoAtual - introDur) : tempoAtual;
+          const progressoScroll = Math.min(1, tempoScroll / scrollDur);
+          const currentScrollX = progressoScroll * maxDeslocamento;
 
-        // Desenhar fatia da faixa panorâmica
-        outCtx.drawImage(
-          faixaCanvas,
-          currentScrollX, 0, 1920, 1080,
-          0, 0, 1920, 1080
-        );
+          outCtx.fillStyle = '#0f1013';
+          outCtx.fillRect(0, 0, 1920, 1080);
 
-        // Atualizar barra
-        const pct = Math.round(30 + (progresso * 70));
-        progressFill.style.width = `${pct}%`;
-        statusText.innerText = `Gravando vídeo: ${Math.round(progresso * 100)}% (Quadro ${frame}/${totalFrames})`;
+          outCtx.drawImage(
+            faixaCanvas,
+            currentScrollX, 0, 1920, 1080,
+            0, 0, 1920, 1080
+          );
+        }
 
-        // Aguardar o tempo do frame para o MediaRecorder capturar perfeitamente
+        // Atualizar barra de progresso
+        const pctGeral = Math.round(30 + ((frame / totalFrames) * 70));
+        progressFill.style.width = `${pctGeral}%`;
+        const faseNome = (enableIntro && tempoAtual < introDur) ? "Intro 3 Cards" : "Scroll Contínuo";
+        statusText.innerText = `Gravando [${faseNome}]: ${Math.round((frame/totalFrames)*100)}% (${(frame/fps).toFixed(1)}s / ${duracaoTotal.toFixed(1)}s)`;
+
         await new Promise(r => setTimeout(r, frameDelay));
       }
 
       recorder.stop();
-      statusText.innerText = "Finalizando e baixando arquivo de vídeo...";
+      statusText.innerText = "Preparando arquivo para a Galeria...";
 
       const videoBlob = await gravacaoPromise;
-      const videoUrl = URL.createObjectURL(videoBlob);
 
-      const downloadLink = document.createElement('a');
-      downloadLink.href = videoUrl;
-      downloadLink.download = `video_historia_youtube_1080p.${extensao}`;
-      downloadLink.click();
+      // Salvamento direto na Galeria de Fotos (Mobile: iOS / Android)
+      let salvoViaShare = false;
+      const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.maxTouchPoints && navigator.maxTouchPoints > 2);
 
-      statusText.innerText = `✓ Concluído! O arquivo video_historia_youtube_1080p.${extensao} foi baixado!`;
+      if (navigator.canShare) {
+        try {
+          const videoFile = new File([videoBlob], `video_historia_${Date.now()}.${extensao}`, { type: mimeType });
+          if (navigator.canShare({ files: [videoFile] })) {
+            statusText.innerText = "📱 Toque em 'Salvar Vídeo' para enviar para a Galeria de Fotos!";
+            await navigator.share({
+              title: "Vídeo Manga Stories",
+              text: "Salvar vídeo na Galeria de Fotos",
+              files: [videoFile]
+            });
+            salvoViaShare = true;
+            mostrarToast("📱 Selecione 'Salvar Vídeo' na tela para guardar nas Fotos!");
+          }
+        } catch (err) {
+          console.log("Compartilhamento nativo cancelado pelo usuário ou fallback:", err);
+        }
+      }
+
+      // Fallback para download clássico (Desktop ou navegadores sem Web Share)
+      if (!salvoViaShare) {
+        const videoUrl = URL.createObjectURL(videoBlob);
+        const downloadLink = document.createElement('a');
+        downloadLink.href = videoUrl;
+        downloadLink.download = `video_historia_youtube_1080p.${extensao}`;
+        downloadLink.click();
+        mostrarToast(`✓ Vídeo baixado! (${extensao.toUpperCase()})`);
+      }
+
+      statusText.innerText = `✓ Concluído com sucesso!`;
       progressFill.style.width = "100%";
 
       setTimeout(() => {
