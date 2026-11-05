@@ -291,24 +291,27 @@
 
     .cards-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
-      gap: 20px;
+      grid-template-columns: repeat(auto-fill, minmax(440px, 1fr));
+      gap: 24px;
     }
 
     .card-editor-item {
       background: var(--bg-panel);
       border: 1px solid var(--border-color);
-      border-radius: 10px;
-      padding: 16px;
+      border-radius: 14px;
+      padding: 18px;
       display: flex;
       flex-direction: column;
       gap: 14px;
+      box-shadow: 0 4px 18px rgba(0,0,0,0.3);
     }
 
     .card-editor-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      padding-bottom: 10px;
     }
 
     .card-editor-header h3 {
@@ -328,34 +331,129 @@
       background: rgba(255, 71, 87, 0.1);
     }
 
-    .file-input-wrapper {
-      position: relative;
-      border: 2px dashed #3a4252;
-      border-radius: 8px;
-      padding: 18px;
-      text-align: center;
-      cursor: pointer;
-      transition: border-color 0.2s;
+    /* MINI CARTINHA REALISTA NO EDITOR */
+    .card-editor-body {
+      display: flex;
+      gap: 18px;
+      align-items: stretch;
+      flex-wrap: wrap;
     }
 
-    .file-input-wrapper:hover {
+    .mini-card-preview {
+      width: 160px;
+      aspect-ratio: 620 / 1040;
+      background: #16181d;
+      border: 2px solid #2e3542;
+      border-radius: 8px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .mini-card-preview:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 28px rgba(0,0,0,0.8);
       border-color: var(--accent);
     }
 
-    .file-input-wrapper input[type="file"] {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      opacity: 0;
-      cursor: pointer;
+    .mini-card-img-slot {
+      height: 66%;
+      background: #1c2029;
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-bottom: 2px solid #262c37;
     }
 
-    .file-input-label {
-      font-size: 13px;
-      color: var(--text-muted);
-      pointer-events: none;
+    .mini-card-img-slot img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: center;
+    }
+
+    .mini-card-txt-slot {
+      height: 34%;
+      background: #0d0e11;
+      padding: 6px 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+    }
+
+    .mini-card-txt-slot p {
+      color: #ffffff;
+      font-family: 'Montserrat', sans-serif;
+      font-weight: 700;
+      font-size: 9.5px;
+      line-height: 1.35;
+      letter-spacing: -0.2px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      display: -webkit-box;
+      -webkit-line-clamp: 4;
+      -webkit-box-orient: vertical;
+    }
+
+    .card-editor-controls {
+      flex: 1;
+      min-width: 200px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .btn-ai {
+      background: linear-gradient(135deg, #8a2be2, #ff4757);
+      color: #ffffff;
+      font-weight: 700;
+      box-shadow: 0 4px 15px rgba(138, 43, 226, 0.35);
+      border: none;
+    }
+
+    .btn-ai:hover {
+      background: linear-gradient(135deg, #9b45ea, #ff6b81);
+      transform: translateY(-1px);
+      box-shadow: 0 6px 20px rgba(138, 43, 226, 0.5);
+    }
+
+    .style-chip {
+      background: #252b36;
+      border: 1px solid #3b4453;
+      color: #ced6e0;
+      padding: 5px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .style-chip:hover {
+      background: var(--accent);
+      color: #fff;
+      border-color: var(--accent);
+    }
+
+    .ai-spinner {
+      width: 44px;
+      height: 44px;
+      border: 4px solid rgba(255, 71, 87, 0.2);
+      border-top-color: #ff4757;
+      border-right-color: #8a2be2;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin: 0 auto;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
     }
 
     .textarea-wrapper textarea {
@@ -369,7 +467,7 @@
       font-size: 13px;
       padding: 10px 12px;
       resize: vertical;
-      min-height: 70px;
+      min-height: 80px;
     }
 
     .textarea-wrapper textarea:focus {
@@ -663,6 +761,45 @@
     </div>
   </div>
 
+  <!-- MODAL DE GERAÇÃO DE IMAGEM COM IA -->
+  <div class="modal-overlay" id="aiModal">
+    <div class="modal-box" style="max-width: 580px;">
+      <h3 style="background: linear-gradient(135deg, #a55eea, #ff4757); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
+        ✨ Gerador de Imagens com IA
+      </h3>
+      <p style="margin-bottom: 18px;">Descreva o que deseja ver na cena para criar a ilustração no tamanho exato do quadrinho (600x680).</p>
+
+      <div id="aiFormArea">
+        <div style="text-align: left; margin-bottom: 14px;">
+          <label style="font-size: 13px; font-weight: 700; color: #ced6e0; display: block; margin-bottom: 6px;">Prompt da Cena:</label>
+          <textarea id="aiPromptInput" rows="3" style="width: 100%; background: #111317; border: 1px solid #333a47; border-radius: 8px; color: #fff; padding: 12px; font-family: inherit; font-size: 14px; resize: vertical;" placeholder="Ex: Goku e Vegeta lutando lado a lado em Namekusei, aura dourada de Super Saiyajin, céu esverdeado, anime DBZ clássico dos anos 90, alta qualidade..."></textarea>
+        </div>
+
+        <div style="text-align: left; margin-bottom: 20px;">
+          <label style="font-size: 12px; color: var(--text-muted); display: block; margin-bottom: 8px;">Estilos Rápidos (Toque para adicionar):</label>
+          <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+            <span class="style-chip" onclick="adicionarEstiloPrompt('estilo Dragon Ball Z clássico dos anos 90, traço de anime vintage, cores vibrantes')">🎨 DBZ Anos 90</span>
+            <span class="style-chip" onclick="adicionarEstiloPrompt('manga japonês preto e branco com hachuras detalhadas e linhas de ação épicas')">📖 Manga P&B</span>
+            <span class="style-chip" onclick="adicionarEstiloPrompt('anime moderno em 4K, iluminação volumétrica, arte de alta definição Shonen')">✨ Anime Moderno</span>
+            <span class="style-chip" onclick="adicionarEstiloPrompt('aura dourada de Super Saiyajin, faíscas elétricas, clima tenso de batalha')">⚡ Super Saiyajin</span>
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 12px;">
+          <button class="btn-secondary" style="flex: 1;" onclick="fecharModalIA()">Cancelar</button>
+          <button class="btn-ai" style="flex: 1.5; padding: 12px;" onclick="executarGeracaoIA()">🚀 Criar Imagem Agora</button>
+        </div>
+      </div>
+
+      <!-- Loading da IA -->
+      <div id="aiLoadingArea" style="display: none; padding: 24px 0;">
+        <div class="ai-spinner"></div>
+        <div style="font-size: 16px; font-weight: 700; color: #ffa502; margin-top: 18px;">✨ Criando ilustração com Inteligência Artificial...</div>
+        <p style="font-size: 13px; color: var(--text-muted); margin-top: 6px;">Aguarde alguns segundos enquanto a IA gera a imagem na proporção exata da sua cartinha.</p>
+      </div>
+    </div>
+  </div>
+
   <!-- CANVAS OCULTO PARA EXPORTAÇÃO DE VÍDEO E IMAGENS -->
   <canvas id="exportCanvas" style="display:none;"></canvas>
   <canvas id="videoRenderCanvas" width="1920" height="1080" style="display:none;"></canvas>
@@ -699,6 +836,7 @@
     let isPlaying = false;
     let scrollPos = 0;
     let animationId = null;
+    let currentCardIdForAi = null;
 
     function renderEditor() {
       const grid = document.getElementById('cardsGrid');
@@ -713,20 +851,41 @@
             ${cards.length > 1 ? `<button class="btn-delete" onclick="removerCard(${card.id})">Excluir</button>` : ''}
           </div>
 
-          <div class="file-input-wrapper">
-            <input type="file" accept="image/*" onchange="carregarImagem(${card.id}, event)">
-            <div class="file-input-label" id="label-file-${card.id}">
-              ${card.image ? '✓ Imagem Carregada! (Clique para trocar)' : 'Clique ou Arraste a Imagem Aqui (600x680)'}
+          <div class="card-editor-body">
+            <!-- VISUALIZAÇÃO DA CARTINHA REALISTA -->
+            <div class="mini-card-preview" id="mini-card-${card.id}" title="Prévia da sua Cartinha">
+              <div class="mini-card-img-slot">
+                ${card.image 
+                  ? `<img src="${card.image}" alt="Cena ${index + 1}">` 
+                  : `<div style="color:#747d8c; font-size:11px; text-align:center; padding:10px; font-weight:700;">Sem Imagem<br><span style="font-size:9.5px; opacity:0.7;">(IA ou Arquivo)</span></div>`
+                }
+              </div>
+              <div class="mini-card-txt-slot">
+                <p id="mini-txt-${card.id}">${formatarTexto(card.text)}</p>
+              </div>
             </div>
-          </div>
 
-          <div class="textarea-wrapper">
-            <label style="font-size:12px; color:var(--text-muted); margin-bottom:4px; display:block;">Texto da História (Embaixo):</label>
-            <textarea placeholder="Digite o texto da história..." oninput="atualizarTexto(${card.id}, this.value)">${card.text}</textarea>
-          </div>
+            <!-- CONTROLES E AÇÕES DO CARD -->
+            <div class="card-editor-controls">
+              <div style="display:flex; gap:8px;">
+                <button class="btn-ai" style="flex:1.2;" onclick="abrirModalIA(${card.id})">
+                  ✨ Gerar com IA
+                </button>
+                <button class="btn-secondary" style="flex:1;" onclick="acionarUploadArquivo(${card.id})">
+                  📁 Arquivo
+                </button>
+                <input type="file" id="file-input-${card.id}" accept="image/*" style="display:none;" onchange="carregarImagem(${card.id}, event)">
+              </div>
 
-          <div class="card-actions">
-            <button class="btn-secondary" style="flex:1;" onclick="baixarCardIndividual(${card.id})">Baixar Este Card PNG</button>
+              <div class="textarea-wrapper">
+                <label style="font-size:12px; color:var(--text-muted); margin-bottom:4px; display:block;">Texto da História (Embaixo):</label>
+                <textarea placeholder="Digite o texto da história..." oninput="atualizarTexto(${card.id}, this.value)">${card.text}</textarea>
+              </div>
+
+              <div class="card-actions">
+                <button class="btn-secondary" style="flex:1; font-size:12.5px; padding:8px 12px;" onclick="baixarCardIndividual(${card.id})">Baixar Este Card PNG</button>
+              </div>
+            </div>
           </div>
         `;
         grid.appendChild(item);
@@ -734,6 +893,94 @@
 
       atualizarTempoEstimado();
       renderPreview();
+    }
+
+    function acionarUploadArquivo(id) {
+      const input = document.getElementById(`file-input-${id}`);
+      if (input) input.click();
+    }
+
+    /* CONTROLE DO MODAL DE IA */
+    function abrirModalIA(id) {
+      currentCardIdForAi = id;
+      const card = cards.find(c => c.id === id);
+      const promptInput = document.getElementById('aiPromptInput');
+      // Sugere o próprio texto do card como base do prompt se houver
+      if (card && card.text) {
+        promptInput.value = `cena de anime manga dramática, ${card.text}, estilo Dragon Ball Z clássico dos anos 90, alta qualidade de animação`;
+      } else {
+        promptInput.value = '';
+      }
+      document.getElementById('aiFormArea').style.display = 'block';
+      document.getElementById('aiLoadingArea').style.display = 'none';
+      document.getElementById('aiModal').style.display = 'flex';
+      setTimeout(() => promptInput.focus(), 100);
+    }
+
+    function fecharModalIA() {
+      document.getElementById('aiModal').style.display = 'none';
+      currentCardIdForAi = null;
+    }
+
+    function adicionarEstiloPrompt(estilo) {
+      const input = document.getElementById('aiPromptInput');
+      if (input.value.trim().length > 0) {
+        input.value += `, ${estilo}`;
+      } else {
+        input.value = estilo;
+      }
+      input.focus();
+    }
+
+    async function executarGeracaoIA() {
+      const prompt = document.getElementById('aiPromptInput').value.trim();
+      if (!prompt) {
+        mostrarToast("Digite um prompt para a IA gerar a ilustração.", true);
+        return;
+      }
+
+      document.getElementById('aiFormArea').style.display = 'none';
+      document.getElementById('aiLoadingArea').style.display = 'block';
+
+      try {
+        const seed = Math.floor(Math.random() * 9999999);
+        const encodedPrompt = encodeURIComponent(prompt + ", masterpiece, high resolution comic panel, clean anime artwork, 8k");
+        const imageUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=600&height=680&nologo=true&seed=${seed}`;
+
+        const img = new Image();
+        img.crossOrigin = "anonymous";
+        img.onload = () => {
+          // Converter para DataURL (Base64) em canvas temporário para segurança total e offline
+          const c = document.createElement('canvas');
+          c.width = 600;
+          c.height = 680;
+          const ctx = c.getContext('2d');
+          ctx.drawImage(img, 0, 0, 600, 680);
+          const base64Data = c.toDataURL('image/jpeg', 0.92);
+
+          const card = cards.find(c => c.id === currentCardIdForAi);
+          if (card) {
+            card.image = base64Data;
+            card._loadedImg = null; // limpa cache da imagem
+            renderEditor();
+            mostrarToast("✨ Ilustração criada pela IA com sucesso!");
+          }
+          fecharModalIA();
+        };
+
+        img.onerror = () => {
+          mostrarToast("Erro ao conectar à IA. Tente refinar o prompt.", true);
+          document.getElementById('aiFormArea').style.display = 'block';
+          document.getElementById('aiLoadingArea').style.display = 'none';
+        };
+
+        img.src = imageUrl;
+      } catch (err) {
+        console.error(err);
+        mostrarToast("Erro ao gerar imagem.", true);
+        document.getElementById('aiFormArea').style.display = 'block';
+        document.getElementById('aiLoadingArea').style.display = 'none';
+      }
     }
 
     function renderPreview() {
@@ -782,6 +1029,9 @@
       const card = cards.find(c => c.id === id);
       if (card) {
         card.text = texto;
+        // Atualiza na hora o texto da mini cartinha realista
+        const miniTxt = document.getElementById(`mini-txt-${id}`);
+        if (miniTxt) miniTxt.innerHTML = formatarTexto(texto);
         renderPreview();
       }
     }

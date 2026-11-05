@@ -16,8 +16,10 @@ Abra o arquivo `gerador_cards.html` no seu navegador ou acesse via servidor loca
 ```bash
 open gerador_cards.html
 ```
-- Faça upload das imagens das cenas e digite os textos da história.
-- Pré-visualize a esteira deslizando na tela em tempo real.
+- **Visualização em Cartinhas:** Cada cena no painel de edição é exibida como uma mini cartinha realista (620x1040), com atualização em tempo real de textos e imagens.
+- **✨ Gerador de Imagens com IA:** Crie ilustrações exclusivas descrevendo a cena em um prompt, com suporte a estilos como *DBZ Clássico Anos 90*, *Manga P&B*, *Anime Moderno 4K* e *Super Saiyajin*, ou escolha imagens dos seus arquivos normalmente.
+- **🎬 Transição Oficial dos 3 Cards (Estilo GokuShow):** Animação de entrada dos 3 primeiros cards com revelação sequencial de textos e imagens antes do início do scroll horizontal contínuo.
+- **📱 Salvar na Galeria do Celular:** No iPhone (iOS) e Android, permite salvar com 1 toque direto no app Fotos / Galeria via Web Share API.
 - **Salvar / Carregar Projeto (.matawa):** Salva todo o seu trabalho (imagens, textos e ordens) em um arquivo exclusivo com assinatura digital proprietária `.matawa`. Só pode ser aberto pelo próprio Matawas Stories, permitindo continuar a edição de onde parou.
 - Exporte imagens individuais em PNG, a faixa panorâmica completa ou gere o vídeo diretamente em 1080p pronto para o YouTube.
 
