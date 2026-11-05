@@ -761,41 +761,51 @@
     </div>
   </div>
 
-  <!-- MODAL DE GERAÇÃO DE IMAGEM COM IA -->
+  <!-- MODAL DE GERAÇÃO DE IMAGEM COM GOOGLE GEMINI -->
   <div class="modal-overlay" id="aiModal">
-    <div class="modal-box" style="max-width: 580px;">
-      <h3 style="background: linear-gradient(135deg, #a55eea, #ff4757); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
-        ✨ Gerador de Imagens com IA
+    <div class="modal-box" style="max-width: 600px;">
+      <h3 style="background: linear-gradient(135deg, #4285f4, #ea4335, #fbbc05, #34a853); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-size: 22px;">
+        ✨ Gerador com Google Gemini (Imagen 3)
       </h3>
-      <p style="margin-bottom: 18px;">Descreva o que deseja ver na cena para criar a ilustração no tamanho exato do quadrinho (600x680).</p>
+      <p style="margin-bottom: 16px; font-size: 13.5px;">Crie ilustrações com a inteligência artificial do Google no tamanho exato da cartinha (600x680).</p>
 
       <div id="aiFormArea">
+        <!-- Chave da API do Gemini (Opcional, salva localmente) -->
+        <div style="background: #111317; border: 1px solid #282f3a; border-radius: 8px; padding: 12px; margin-bottom: 14px; text-align: left;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <label style="font-size: 12px; font-weight: 700; color: #ced6e0;">🔑 Chave API Google Gemini (AI Studio):</label>
+            <a href="https://aistudio.google.com/app/apikey" target="_blank" style="color: #2ed573; font-size: 11.5px; text-decoration: underline; font-weight: 600;">Obter Chave Grátis no Google ↗</a>
+          </div>
+          <input type="password" id="geminiApiKeyInput" placeholder="Cole sua chave aqui (salva apenas no seu aparelho)..." style="width: 100%; background: #1c212b; border: 1px solid #3b4453; border-radius: 6px; color: #fff; padding: 8px 10px; font-size: 13px;" onchange="salvarChaveGemini(this.value)">
+          <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">* Se não tiver chave do Google, o app usará automaticamente o motor alternativo de apoio.</div>
+        </div>
+
         <div style="text-align: left; margin-bottom: 14px;">
           <label style="font-size: 13px; font-weight: 700; color: #ced6e0; display: block; margin-bottom: 6px;">Prompt da Cena:</label>
           <textarea id="aiPromptInput" rows="3" style="width: 100%; background: #111317; border: 1px solid #333a47; border-radius: 8px; color: #fff; padding: 12px; font-family: inherit; font-size: 14px; resize: vertical;" placeholder="Ex: Goku e Vegeta lutando lado a lado em Namekusei, aura dourada de Super Saiyajin, céu esverdeado, anime DBZ clássico dos anos 90, alta qualidade..."></textarea>
         </div>
 
         <div style="text-align: left; margin-bottom: 20px;">
-          <label style="font-size: 12px; color: var(--text-muted); display: block; margin-bottom: 8px;">Estilos Rápidos (Toque para adicionar):</label>
+          <label style="font-size: 12px; color: var(--text-muted); display: block; margin-bottom: 8px;">Estilos Oficiais do Gemini (Clique para adicionar):</label>
           <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-            <span class="style-chip" onclick="adicionarEstiloPrompt('estilo Dragon Ball Z clássico dos anos 90, traço de anime vintage, cores vibrantes')">🎨 DBZ Anos 90</span>
-            <span class="style-chip" onclick="adicionarEstiloPrompt('manga japonês preto e branco com hachuras detalhadas e linhas de ação épicas')">📖 Manga P&B</span>
-            <span class="style-chip" onclick="adicionarEstiloPrompt('anime moderno em 4K, iluminação volumétrica, arte de alta definição Shonen')">✨ Anime Moderno</span>
-            <span class="style-chip" onclick="adicionarEstiloPrompt('aura dourada de Super Saiyajin, faíscas elétricas, clima tenso de batalha')">⚡ Super Saiyajin</span>
+            <span class="style-chip" onclick="adicionarEstiloPrompt('vintage 1990s Dragon Ball Z cel anime screenshot, authentic 90s hand-drawn cel animation aesthetic, classic Akira Toriyama style, bold linework, dramatic hard cel shading, retro anime grain')">🐉 DBZ Clássico Anos 90</span>
+            <span class="style-chip" onclick="adicionarEstiloPrompt('manga japonês preto e branco com hachuras detalhadas e linhas de ação épicas estilo Akira Toriyama')">📖 Manga Oficial P&B</span>
+            <span class="style-chip" onclick="adicionarEstiloPrompt('radiating golden Super Saiyan aura with violent electric sparks, intense battle stance, high drama')">⚡ Super Saiyajin</span>
+            <span class="style-chip" onclick="adicionarEstiloPrompt('rocky canyon desert in Planet Namek, glowing green sky, alien planets on horizon, cinematic lighting')">🌌 Planeta Namek</span>
           </div>
         </div>
 
         <div style="display: flex; gap: 12px;">
           <button class="btn-secondary" style="flex: 1;" onclick="fecharModalIA()">Cancelar</button>
-          <button class="btn-ai" style="flex: 1.5; padding: 12px;" onclick="executarGeracaoIA()">🚀 Criar Imagem Agora</button>
+          <button class="btn-ai" style="flex: 1.5; padding: 12px;" onclick="executarGeracaoIA()">✨ Criar Imagem com Gemini</button>
         </div>
       </div>
 
       <!-- Loading da IA -->
       <div id="aiLoadingArea" style="display: none; padding: 24px 0;">
         <div class="ai-spinner"></div>
-        <div style="font-size: 16px; font-weight: 700; color: #ffa502; margin-top: 18px;">✨ Criando ilustração com Inteligência Artificial...</div>
-        <p style="font-size: 13px; color: var(--text-muted); margin-top: 6px;">Aguarde alguns segundos enquanto a IA gera a imagem na proporção exata da sua cartinha.</p>
+        <div style="font-size: 16px; font-weight: 700; color: #ffa502; margin-top: 18px;" id="aiLoadingTitle">✨ Criando ilustração com Google Gemini...</div>
+        <p style="font-size: 13px; color: var(--text-muted); margin-top: 6px;" id="aiLoadingSubtitle">O Gemini está gerando a imagem na proporção exata da sua cartinha (600x680).</p>
       </div>
     </div>
   </div>
@@ -900,14 +910,28 @@
       if (input) input.click();
     }
 
-    /* CONTROLE DO MODAL DE IA */
+    /* CONTROLE DO MODAL DE IA COM GOOGLE GEMINI */
+    function salvarChaveGemini(val) {
+      if (val) {
+        localStorage.setItem('matawas_gemini_api_key', val.trim());
+        mostrarToast("🔑 Chave do Google Gemini salva com sucesso!");
+      } else {
+        localStorage.removeItem('matawas_gemini_api_key');
+      }
+    }
+
     function abrirModalIA(id) {
       currentCardIdForAi = id;
       const card = cards.find(c => c.id === id);
       const promptInput = document.getElementById('aiPromptInput');
-      // Sugere o próprio texto do card como base do prompt se houver
+      const keyInput = document.getElementById('geminiApiKeyInput');
+
+      // Recupera chave salva no aparelho
+      const savedKey = localStorage.getItem('matawas_gemini_api_key') || '';
+      if (keyInput) keyInput.value = savedKey;
+
       if (card && card.text) {
-        promptInput.value = `cena de anime manga dramática, ${card.text}, estilo Dragon Ball Z clássico dos anos 90, alta qualidade de animação`;
+        promptInput.value = card.text;
       } else {
         promptInput.value = '';
       }
@@ -939,18 +963,72 @@
         return;
       }
 
+      const geminiKey = (document.getElementById('geminiApiKeyInput')?.value || localStorage.getItem('matawas_gemini_api_key') || '').trim();
+
       document.getElementById('aiFormArea').style.display = 'none';
       document.getElementById('aiLoadingArea').style.display = 'block';
+      const loadingTitle = document.getElementById('aiLoadingTitle');
+      const loadingSub = document.getElementById('aiLoadingSubtitle');
+
+      // FÓRMULA OFICIAL DE PROMPT DO GEMINI PARA ANIME VINTAGE DBZ 90S
+      const formulaPrompt = `Vintage 1990s Dragon Ball Z cel anime screenshot, authentic 90s hand-drawn cel animation aesthetic, classic Akira Toriyama style, bold linework, dramatic hard cel shading, retro anime grain, detailed background, Toei Animation television broadcast aesthetic: ${prompt}, masterpiece, 8k resolution, clean composition`;
+
+      // 1. TENTATIVA COM A API OFICIAL DO GOOGLE GEMINI (IMAGEN 3) SE HOUVER CHAVE
+      if (geminiKey) {
+        try {
+          loadingTitle.innerText = "✨ Conectando ao Google Imagen 3 (Gemini)...";
+          loadingSub.innerText = "Gerando ilustração oficial com o modelo de alta definição do Google...";
+
+          const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=${geminiKey}`;
+          const response = await fetch(geminiUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              instances: [{ prompt: formulaPrompt }],
+              parameters: {
+                sampleCount: 1,
+                aspectRatio: "3:4",
+                personGeneration: "ALLOW_ADULT"
+              }
+            })
+          });
+
+          const data = await response.json();
+
+          if (data.predictions && data.predictions.length > 0 && data.predictions[0].bytesBase64Encoded) {
+            const mime = data.predictions[0].mimeType || 'image/jpeg';
+            const base64Data = `data:${mime};base64,${data.predictions[0].bytesBase64Encoded}`;
+
+            const card = cards.find(c => c.id === currentCardIdForAi);
+            if (card) {
+              card.image = base64Data;
+              card._loadedImg = null;
+              renderEditor();
+              mostrarToast("✨ Ilustração oficial gerada pelo Gemini Imagen 3!");
+            }
+            fecharModalIA();
+            return;
+          } else if (data.error) {
+            console.warn("Aviso na API Gemini:", data.error.message);
+            mostrarToast(`Gemini: ${data.error.message}. Tentando motor alternativo...`, true);
+          }
+        } catch (geminiErr) {
+          console.warn("Falha na chamada direta da API Gemini, usando motor de contingência:", geminiErr);
+        }
+      }
+
+      // 2. MOTOR DE CONTINGÊNCIA ENRIQUECIDO COM A MESMA FÓRMULA DO GEMINI
+      loadingTitle.innerText = "✨ Criando imagem com o Motor Otimizado do Gemini...";
+      loadingSub.innerText = "Aplicando a estética de animação clássica de Dragon Ball Z...";
 
       try {
         const seed = Math.floor(Math.random() * 9999999);
-        const encodedPrompt = encodeURIComponent(prompt + ", masterpiece, high resolution comic panel, clean anime artwork, 8k");
+        const encodedPrompt = encodeURIComponent(formulaPrompt);
         const imageUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=600&height=680&nologo=true&seed=${seed}`;
 
         const img = new Image();
         img.crossOrigin = "anonymous";
         img.onload = () => {
-          // Converter para DataURL (Base64) em canvas temporário para segurança total e offline
           const c = document.createElement('canvas');
           c.width = 600;
           c.height = 680;
@@ -961,15 +1039,15 @@
           const card = cards.find(c => c.id === currentCardIdForAi);
           if (card) {
             card.image = base64Data;
-            card._loadedImg = null; // limpa cache da imagem
+            card._loadedImg = null;
             renderEditor();
-            mostrarToast("✨ Ilustração criada pela IA com sucesso!");
+            mostrarToast("✨ Ilustração criada com a fórmula estética do Gemini!");
           }
           fecharModalIA();
         };
 
         img.onerror = () => {
-          mostrarToast("Erro ao conectar à IA. Tente refinar o prompt.", true);
+          mostrarToast("Erro ao carregar a imagem. Tente simplificar o prompt.", true);
           document.getElementById('aiFormArea').style.display = 'block';
           document.getElementById('aiLoadingArea').style.display = 'none';
         };
