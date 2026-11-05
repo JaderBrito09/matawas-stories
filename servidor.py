@@ -15,8 +15,8 @@ def carregar_env():
     """Lê o arquivo .env e retorna um dicionário com as variáveis."""
     env_vars = {
         "GEMINI_API_KEY": "",
-        "GEMINI_IMAGE_MODEL": "imagen-3.0-generate-002",
-        "GEMINI_LLM_MODEL": "gemini-2.0-flash",
+        "GEMINI_IMAGE_MODEL": "gemini-2.5-flash-image",
+        "GEMINI_LLM_MODEL": "gemini-2.5-flash",
         "PORT": 8080
     }
     
@@ -56,8 +56,8 @@ class MatawasRequestHandler(http.server.SimpleHTTPRequestHandler):
             current_env = carregar_env()
             resposta = {
                 "apiKey": current_env.get("GEMINI_API_KEY", ""),
-                "imageModel": current_env.get("GEMINI_IMAGE_MODEL", "imagen-3.0-generate-002"),
-                "llmModel": current_env.get("GEMINI_LLM_MODEL", "gemini-2.0-flash"),
+                "imageModel": current_env.get("GEMINI_IMAGE_MODEL", "gemini-2.5-flash-image"),
+                "llmModel": current_env.get("GEMINI_LLM_MODEL", "gemini-2.5-flash"),
                 "hasApiKey": bool(current_env.get("GEMINI_API_KEY", "").strip())
             }
             self.wfile.write(json.dumps(resposta).encode("utf-8"))
@@ -86,3 +86,4 @@ def iniciar_servidor():
 
 if __name__ == "__main__":
     iniciar_servidor()
+

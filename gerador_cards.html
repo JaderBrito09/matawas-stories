@@ -912,7 +912,7 @@
     }
 
     /* CONTROLE DO MODAL DE IA COM GOOGLE GEMINI */
-    let serverEnvConfig = { apiKey: '', imageModel: 'imagen-3.0-generate-002', llmModel: 'gemini-2.0-flash', hasApiKey: false };
+    let serverEnvConfig = { apiKey: '', imageModel: 'gemini-2.5-flash-image', llmModel: 'gemini-2.5-flash', hasApiKey: false };
 
     async function carregarConfiguracoesServidor() {
       try {
@@ -999,45 +999,87 @@
       // FÓRMULA OFICIAL DE PROMPT DO GEMINI PARA ANIME VINTAGE DBZ 90S
       const formulaPrompt = `Vintage 1990s Dragon Ball Z cel anime screenshot, authentic 90s hand-drawn cel animation aesthetic, classic Akira Toriyama style, bold linework, dramatic hard cel shading, retro anime grain, detailed background, Toei Animation television broadcast aesthetic: ${prompt}, masterpiece, 8k resolution, clean composition`;
 
-      // 1. TENTATIVA COM A API OFICIAL DO GOOGLE GEMINI (IMAGEN 3) SE HOUVER CHAVE
+      // 1. TENTATIVA COM A API OFICIAL DO GOOGLE GEMINI SE HOUVER CHAVE
       if (geminiKey) {
         try {
-          loadingTitle.innerText = "✨ Conectando ao Google Imagen 3 (Gemini)...";
-          loadingSub.innerText = "Gerando ilustração oficial com o modelo de alta definição do Google...";
+          loadingTitle.innerText = "✨ Conectando ao Google Gemini...";
+          loadingSub.innerText = "Gerando ilustração oficial com modelo do Google AI Studio...";
 
-          const modelName = serverEnvConfig.imageModel || 'imagen-3.0-generate-002';
-          const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:predict?key=${geminiKey}`;
-          const response = await fetch(geminiUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              instances: [{ prompt: formulaPrompt }],
-              parameters: {
-                sampleCount: 1,
-                aspectRatio: "3:4",
-                personGeneration: "ALLOW_ADULT"
+          let modelName = serverEnvConfig.imageModel || 'gemini-2.5-flash-image';
+          if (modelName.includes('nano-banana')) {
+            modelName = 'gemini-2.5-flash-image';
+          }
+
+          let response;
+          if (modelName.startsWith('imagen-')) {
+            // Modelo Imagen tradicional (:predict)
+            const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:predict?key=${geminiKey}`;
+            response = await fetch(geminiUrl, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                instances: [{ prompt: formulaPrompt }],
+                parameters: {
+                  sampleCount: 1,
+                  aspectRatio: "3:4",
+                  personGeneration: "ALLOW_ADULT"
+                }
+              })
+            });
+
+            const data = await response.json();
+            if (data.predictions && data.predictions.length > 0 && data.predictions[0].bytesBase64Encoded) {
+              const mime = data.predictions[0].mimeType || 'image/jpeg';
+              const base64Data = `data:${mime};base64,${data.predictions[0].bytesBase64Encoded}`;
+              const card = cards.find(c => c.id === currentCardIdForAi);
+              if (card) {
+                card.image = base64Data;
+                card._loadedImg = null;
+                renderEditor();
+                mostrarToast("✨ Ilustração oficial gerada pelo Google Imagen 3!");
               }
-            })
-          });
-
-          const data = await response.json();
-
-          if (data.predictions && data.predictions.length > 0 && data.predictions[0].bytesBase64Encoded) {
-            const mime = data.predictions[0].mimeType || 'image/jpeg';
-            const base64Data = `data:${mime};base64,${data.predictions[0].bytesBase64Encoded}`;
-
-            const card = cards.find(c => c.id === currentCardIdForAi);
-            if (card) {
-              card.image = base64Data;
-              card._loadedImg = null;
-              renderEditor();
-              mostrarToast("✨ Ilustração oficial gerada pelo Gemini Imagen 3!");
+              fecharModalIA();
+              return;
+            } else if (data.error) {
+              console.warn("Aviso na API Imagen:", data.error.message);
+              mostrarToast(`Imagen: ${data.error.message}. Tentando contingência...`, true);
             }
-            fecharModalIA();
-            return;
-          } else if (data.error) {
-            console.warn("Aviso na API Gemini:", data.error.message);
-            mostrarToast(`Gemini: ${data.error.message}. Tentando motor alternativo...`, true);
+          } else {
+            // Modelo Gemini Multimodal Oficial (ex: gemini-2.5-flash-image, gemini-3.1-flash-image) via :generateContent
+            const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${geminiKey}`;
+            response = await fetch(geminiUrl, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                contents: [{
+                  parts: [{ text: formulaPrompt }]
+                }],
+                generationConfig: {
+                  responseModalities: ["image", "text"]
+                }
+              })
+            });
+
+            const data = await response.json();
+            const parts = data.candidates?.[0]?.content?.parts || [];
+            const imgPart = parts.find(p => p.inlineData && p.inlineData.data);
+
+            if (imgPart) {
+              const mime = imgPart.inlineData.mimeType || 'image/png';
+              const base64Data = `data:${mime};base64,${imgPart.inlineData.data}`;
+              const card = cards.find(c => c.id === currentCardIdForAi);
+              if (card) {
+                card.image = base64Data;
+                card._loadedImg = null;
+                renderEditor();
+                mostrarToast(`✨ Ilustração oficial gerada pelo ${modelName}!`);
+              }
+              fecharModalIA();
+              return;
+            } else if (data.error) {
+              console.warn("Aviso na API Gemini:", data.error.message);
+              mostrarToast(`Gemini (${modelName}): ${data.error.message}. Tentando contingência...`, true);
+            }
           }
         } catch (geminiErr) {
           console.warn("Falha na chamada direta da API Gemini, usando motor de contingência:", geminiErr);
