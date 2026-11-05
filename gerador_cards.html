@@ -770,14 +770,15 @@
       <p style="margin-bottom: 16px; font-size: 13.5px;">Crie ilustrações com a inteligência artificial do Google no tamanho exato da cartinha (600x680).</p>
 
       <div id="aiFormArea">
-        <!-- Chave da API do Gemini (Opcional, salva localmente) -->
+        <!-- Chave da API do Gemini (Opcional, salva localmente ou via .env) -->
         <div style="background: #111317; border: 1px solid #282f3a; border-radius: 8px; padding: 12px; margin-bottom: 14px; text-align: left;">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-            <label style="font-size: 12px; font-weight: 700; color: #ced6e0;">🔑 Chave API Google Gemini (AI Studio):</label>
+            <label style="font-size: 12px; font-weight: 700; color: #ced6e0;">🔑 Chave API Google Gemini (Google AI Studio):</label>
             <a href="https://aistudio.google.com/app/apikey" target="_blank" style="color: #2ed573; font-size: 11.5px; text-decoration: underline; font-weight: 600;">Obter Chave Grátis no Google ↗</a>
           </div>
-          <input type="password" id="geminiApiKeyInput" placeholder="Cole sua chave aqui (salva apenas no seu aparelho)..." style="width: 100%; background: #1c212b; border: 1px solid #3b4453; border-radius: 6px; color: #fff; padding: 8px 10px; font-size: 13px;" onchange="salvarChaveGemini(this.value)">
-          <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">* Se não tiver chave do Google, o app usará automaticamente o motor alternativo de apoio.</div>
+          <input type="password" id="geminiApiKeyInput" placeholder="Cole sua chave aqui ou defina no arquivo .env..." style="width: 100%; background: #1c212b; border: 1px solid #3b4453; border-radius: 6px; color: #fff; padding: 8px 10px; font-size: 13px;" onchange="salvarChaveGemini(this.value)">
+          <div id="envKeyStatus" style="display:none; color:#2ed573; font-size:11.5px; font-weight:700; margin-top:6px;">✓ Chave ativa do arquivo .env</div>
+          <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">* Você pode gravar a chave no arquivo <strong>.env</strong> para ficar salva com segurança máxima no projeto.</div>
         </div>
 
         <div style="text-align: left; margin-bottom: 14px;">
@@ -911,6 +912,29 @@
     }
 
     /* CONTROLE DO MODAL DE IA COM GOOGLE GEMINI */
+    let serverEnvConfig = { apiKey: '', imageModel: 'imagen-3.0-generate-002', llmModel: 'gemini-2.0-flash', hasApiKey: false };
+
+    async function carregarConfiguracoesServidor() {
+      try {
+        const resp = await fetch('/api/config');
+        if (resp.ok) {
+          const cfg = await resp.json();
+          serverEnvConfig = cfg;
+          if (cfg.hasApiKey && cfg.apiKey) {
+            const keyInput = document.getElementById('geminiApiKeyInput');
+            if (keyInput) keyInput.value = cfg.apiKey;
+            const badge = document.getElementById('envKeyStatus');
+            if (badge) {
+              badge.style.display = 'block';
+              badge.innerText = `✓ Chave e modelo (${cfg.imageModel}) ativos via .env`;
+            }
+          }
+        }
+      } catch (e) {
+        // Modo offline / arquivo local
+      }
+    }
+
     function salvarChaveGemini(val) {
       if (val) {
         localStorage.setItem('matawas_gemini_api_key', val.trim());
@@ -926,9 +950,11 @@
       const promptInput = document.getElementById('aiPromptInput');
       const keyInput = document.getElementById('geminiApiKeyInput');
 
-      // Recupera chave salva no aparelho
-      const savedKey = localStorage.getItem('matawas_gemini_api_key') || '';
-      if (keyInput) keyInput.value = savedKey;
+      // Prioriza a chave do .env se existir, senão recupera do localStorage
+      const activeKey = serverEnvConfig.apiKey || localStorage.getItem('matawas_gemini_api_key') || '';
+      if (keyInput && activeKey) {
+        keyInput.value = activeKey;
+      }
 
       if (card && card.text) {
         promptInput.value = card.text;
@@ -979,7 +1005,8 @@
           loadingTitle.innerText = "✨ Conectando ao Google Imagen 3 (Gemini)...";
           loadingSub.innerText = "Gerando ilustração oficial com o modelo de alta definição do Google...";
 
-          const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=${geminiKey}`;
+          const modelName = serverEnvConfig.imageModel || 'imagen-3.0-generate-002';
+          const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:predict?key=${geminiKey}`;
           const response = await fetch(geminiUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -1684,6 +1711,7 @@
     }
 
     // Inicialização
+    carregarConfiguracoesServidor();
     renderEditor();
   </script>
   <div id="toastNotification" class="toast-msg"></div>
