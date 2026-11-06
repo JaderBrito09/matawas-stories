@@ -15,8 +15,8 @@ def carregar_env():
     """Lê o arquivo .env e retorna um dicionário com as variáveis."""
     env_vars = {
         "GEMINI_API_KEY": "",
-        "GEMINI_IMAGE_MODEL": "gemini-2.5-flash-image",
-        "GEMINI_LLM_MODEL": "gemini-2.5-flash",
+        "GEMINI_IMAGE_MODEL": "gemini-3.1-flash-image",
+        "GEMINI_LLM_MODEL": "gemini-3.8-flash",
         "PORT": 8080
     }
     
@@ -56,8 +56,8 @@ class MatawasRequestHandler(http.server.SimpleHTTPRequestHandler):
             current_env = carregar_env()
             resposta = {
                 "apiKey": current_env.get("GEMINI_API_KEY", ""),
-                "imageModel": current_env.get("GEMINI_IMAGE_MODEL", "gemini-2.5-flash-image"),
-                "llmModel": current_env.get("GEMINI_LLM_MODEL", "gemini-2.5-flash"),
+                "imageModel": current_env.get("GEMINI_IMAGE_MODEL", "gemini-3.1-flash-image"),
+                "llmModel": current_env.get("GEMINI_LLM_MODEL", "gemini-3.8-flash"),
                 "hasApiKey": bool(current_env.get("GEMINI_API_KEY", "").strip())
             }
             self.wfile.write(json.dumps(resposta).encode("utf-8"))
@@ -73,16 +73,26 @@ class MatawasRequestHandler(http.server.SimpleHTTPRequestHandler):
         super().do_GET()
 
 def iniciar_servidor():
-    # Permite reutilizar a porta imediatamente ao reiniciar
+    global PORT
     socketserver.TCPServer.allow_reuse_address = True
-    with socketserver.TCPServer(("", PORT), MatawasRequestHandler) as httpd:
-        print(f"✓ Servidor Matawas Stories rodando na porta {PORT}")
-        print(f"👉 Acesse localmente: http://localhost:{PORT}")
-        print(f"👉 No celular (mesmo Wi-Fi): http://192.168.18.136:{PORT}")
+    porta_atual = PORT
+    for _ in range(5):
         try:
-            httpd.serve_forever()
-        except KeyboardInterrupt:
-            print("\nServidor encerrado.")
+            with socketserver.TCPServer(("", porta_atual), MatawasRequestHandler) as httpd:
+                PORT = porta_atual
+                print(f"✓ Servidor Matawas Stories rodando na porta {PORT}")
+                print(f"👉 Acesse localmente: http://localhost:{PORT}")
+                print(f"👉 No celular (mesmo Wi-Fi): http://192.168.18.136:{PORT}")
+                try:
+                    httpd.serve_forever()
+                except KeyboardInterrupt:
+                    print("\nServidor encerrado.")
+                return
+        except OSError as e:
+            if e.errno == 48:  # Porta já em uso
+                porta_atual += 1
+            else:
+                raise e
 
 if __name__ == "__main__":
     iniciar_servidor()

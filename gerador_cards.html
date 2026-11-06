@@ -782,17 +782,23 @@
         </div>
 
         <div style="text-align: left; margin-bottom: 14px;">
-          <label style="font-size: 13px; font-weight: 700; color: #ced6e0; display: block; margin-bottom: 6px;">Prompt da Cena:</label>
-          <textarea id="aiPromptInput" rows="3" style="width: 100%; background: #111317; border: 1px solid #333a47; border-radius: 8px; color: #fff; padding: 12px; font-family: inherit; font-size: 14px; resize: vertical;" placeholder="Ex: Goku e Vegeta lutando lado a lado em Namekusei, aura dourada de Super Saiyajin, céu esverdeado, anime DBZ clássico dos anos 90, alta qualidade..."></textarea>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <label style="font-size: 13px; font-weight: 700; color: #ced6e0;">Prompt da Cena:</label>
+            <button type="button" onclick="aprimorarPromptComLLM()" style="background: rgba(46, 213, 115, 0.15); border: 1px solid rgba(46, 213, 115, 0.4); color: #2ed573; font-size: 11.5px; font-weight: 700; padding: 4px 10px; border-radius: 6px; cursor: pointer; transition: all 0.2s;" title="Usa o Gemini 3.8 Flash para enriquecer os detalhes visuais da cena">
+              ⚡ Aprimorar com Gemini 3.8 Flash
+            </button>
+          </div>
+          <textarea id="aiPromptInput" rows="3" style="width: 100%; background: #111317; border: 1px solid #333a47; border-radius: 8px; color: #fff; padding: 12px; font-family: inherit; font-size: 14px; resize: vertical;" placeholder="Ex: Goku e Vegeta em combate épico, iluminação cinematográfica, cores vibrantes, traço moderno de alta definição..."></textarea>
         </div>
 
         <div style="text-align: left; margin-bottom: 20px;">
-          <label style="font-size: 12px; color: var(--text-muted); display: block; margin-bottom: 8px;">Estilos Oficiais do Gemini (Clique para adicionar):</label>
+          <label style="font-size: 12px; color: var(--text-muted); display: block; margin-bottom: 8px;">Estilos Visuais (Clique para adicionar):</label>
           <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-            <span class="style-chip" onclick="adicionarEstiloPrompt('vintage 1990s Dragon Ball Z cel anime screenshot, authentic 90s hand-drawn cel animation aesthetic, classic Akira Toriyama style, bold linework, dramatic hard cel shading, retro anime grain')">🐉 DBZ Clássico Anos 90</span>
-            <span class="style-chip" onclick="adicionarEstiloPrompt('manga japonês preto e branco com hachuras detalhadas e linhas de ação épicas estilo Akira Toriyama')">📖 Manga Oficial P&B</span>
-            <span class="style-chip" onclick="adicionarEstiloPrompt('radiating golden Super Saiyan aura with violent electric sparks, intense battle stance, high drama')">⚡ Super Saiyajin</span>
-            <span class="style-chip" onclick="adicionarEstiloPrompt('rocky canyon desert in Planet Namek, glowing green sky, alien planets on horizon, cinematic lighting')">🌌 Planeta Namek</span>
+            <span class="style-chip" onclick="adicionarEstiloPrompt('modern high quality anime illustration, crisp clean linework, vibrant vivid colors, cinematic lighting, sharp focus')">✨ Anime Moderno HD</span>
+            <span class="style-chip" onclick="adicionarEstiloPrompt('epic shonen action scene, dramatic dynamic camera angle, intense motion, high production value anime')">🔥 Shonen Épico</span>
+            <span class="style-chip" onclick="adicionarEstiloPrompt('radiating intense glowing energy aura with sharp electric sparks, dynamic battle stance, atmospheric particles')">⚡ Aura de Combate</span>
+            <span class="style-chip" onclick="adicionarEstiloPrompt('detailed cinematic background scenery, atmospheric depth, dramatic clouds, breathtaking sky, high budget animation')">🌌 Cenário Cinemático</span>
+            <span class="style-chip" onclick="adicionarEstiloPrompt('japanese manga black and white ink art style, detailed screentone shading, dramatic crosshatching')">📖 Mangá Detalhado P&B</span>
           </div>
         </div>
 
@@ -912,7 +918,7 @@
     }
 
     /* CONTROLE DO MODAL DE IA COM GOOGLE GEMINI */
-    let serverEnvConfig = { apiKey: '', imageModel: 'gemini-2.5-flash-image', llmModel: 'gemini-2.5-flash', hasApiKey: false };
+    let serverEnvConfig = { apiKey: '', imageModel: 'gemini-3.1-flash-image', llmModel: 'gemini-3.8-flash', hasApiKey: false };
 
     async function carregarConfiguracoesServidor() {
       try {
@@ -926,7 +932,7 @@
             const badge = document.getElementById('envKeyStatus');
             if (badge) {
               badge.style.display = 'block';
-              badge.innerText = `✓ Chave e modelo (${cfg.imageModel}) ativos via .env`;
+              badge.innerText = `✓ Chave e modelos ativos via .env (LLM: ${cfg.llmModel} | Imagem: ${cfg.imageModel})`;
             }
           }
         }
@@ -982,6 +988,56 @@
       input.focus();
     }
 
+    async function aprimorarPromptComLLM() {
+      const promptInput = document.getElementById('aiPromptInput');
+      const originalText = promptInput.value.trim();
+      if (!originalText) {
+        mostrarToast("Digite algo no prompt primeiro para o Gemini aprimorar.", true);
+        return;
+      }
+
+      const geminiKey = (document.getElementById('geminiApiKeyInput')?.value || localStorage.getItem('matawas_gemini_api_key') || '').trim();
+      if (!geminiKey) {
+        mostrarToast("Chave da API do Gemini necessária para aprimorar o prompt.", true);
+        return;
+      }
+
+      const llmModel = serverEnvConfig.llmModel || 'gemini-3.8-flash';
+      mostrarToast(`⚡ Aprimorando cena com ${llmModel}...`);
+
+      try {
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${llmModel}:generateContent?key=${geminiKey}`;
+        const instruction = "Você é um especialista em direção de arte e storyboard para animes modernos de alto impacto (estilo Ufotable, MAPPA, Toei moderno). Reescreva e enriqueça a descrição da cena a seguir em inglês, transformando-a em um prompt visual rico, com ângulos de câmera cinematográficos, iluminação volumétrica, composição dinâmica e traço moderno nítido. NÃO use referências vintage ou anos 90. Retorne ESTRITAMENTE o prompt enriquecido em inglês, sem aspas e sem nenhuma explicação extra.";
+
+        const resp = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [
+              {
+                role: "user",
+                parts: [
+                  { text: `${instruction}\n\nCena original: ${originalText}` }
+                ]
+              }
+            ]
+          })
+        });
+
+        const data = await resp.json();
+        const enhancedText = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+        if (enhancedText) {
+          promptInput.value = enhancedText;
+          mostrarToast(`✨ Prompt enriquecido pelo ${llmModel}!`);
+        } else if (data.error) {
+          mostrarToast(`Erro ao aprimorar: ${data.error.message}`, true);
+        }
+      } catch (err) {
+        console.warn("Erro ao chamar LLM:", err);
+        mostrarToast("Falha ao conectar com o modelo LLM.", true);
+      }
+    }
+
     async function executarGeracaoIA() {
       const prompt = document.getElementById('aiPromptInput').value.trim();
       if (!prompt) {
@@ -996,8 +1052,8 @@
       const loadingTitle = document.getElementById('aiLoadingTitle');
       const loadingSub = document.getElementById('aiLoadingSubtitle');
 
-      // FÓRMULA OFICIAL DE PROMPT DO GEMINI PARA ANIME VINTAGE DBZ 90S
-      const formulaPrompt = `Vintage 1990s Dragon Ball Z cel anime screenshot, authentic 90s hand-drawn cel animation aesthetic, classic Akira Toriyama style, bold linework, dramatic hard cel shading, retro anime grain, detailed background, Toei Animation television broadcast aesthetic: ${prompt}, masterpiece, 8k resolution, clean composition`;
+      // FÓRMULA OFICIAL DE PROMPT DO GEMINI PARA ANIME MODERNO DE ALTA DEFINIÇÃO
+      const formulaPrompt = `High quality modern anime illustration, crisp lines, vibrant vivid colors, cinematic lighting, dynamic atmosphere, sharp focus, detailed digital anime artwork: ${prompt}, masterpiece, 8k resolution, clean composition`;
 
       // 1. TENTATIVA COM A API OFICIAL DO GOOGLE GEMINI SE HOUVER CHAVE
       if (geminiKey) {
@@ -1005,9 +1061,9 @@
           loadingTitle.innerText = "✨ Conectando ao Google Gemini...";
           loadingSub.innerText = "Gerando ilustração oficial com modelo do Google AI Studio...";
 
-          let modelName = serverEnvConfig.imageModel || 'gemini-2.5-flash-image';
-          if (modelName.includes('nano-banana')) {
-            modelName = 'gemini-2.5-flash-image';
+          let modelName = serverEnvConfig.imageModel || 'gemini-3.1-flash-image';
+          if (modelName === 'gemini-3.8-flash' || modelName.includes('nano-banana')) {
+            modelName = 'gemini-3.1-flash-image';
           }
 
           let response;
@@ -1045,7 +1101,7 @@
               mostrarToast(`Imagen: ${data.error.message}. Tentando contingência...`, true);
             }
           } else {
-            // Modelo Gemini Multimodal Oficial (ex: gemini-2.5-flash-image, gemini-3.1-flash-image) via :generateContent
+            // Modelo Gemini Multimodal Oficial (ex: gemini-3.1-flash-image, gemini-2.5-flash-image) via :generateContent
             const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${geminiKey}`;
             response = await fetch(geminiUrl, {
               method: 'POST',
@@ -1086,9 +1142,9 @@
         }
       }
 
-      // 2. MOTOR DE CONTINGÊNCIA ENRIQUECIDO COM A MESMA FÓRMULA DO GEMINI
-      loadingTitle.innerText = "✨ Criando imagem com o Motor Otimizado do Gemini...";
-      loadingSub.innerText = "Aplicando a estética de animação clássica de Dragon Ball Z...";
+      // 2. MOTOR DE CONTINGÊNCIA
+      loadingTitle.innerText = "✨ Criando imagem com o Motor Otimizado...";
+      loadingSub.innerText = "Gerando ilustração moderna de alta resolução...";
 
       try {
         const seed = Math.floor(Math.random() * 9999999);
