@@ -63,6 +63,12 @@ class MatawasRequestHandler(http.server.SimpleHTTPRequestHandler):
             self.wfile.write(json.dumps(resposta).encode("utf-8"))
             return
 
+        # Favicon silencioso para evitar 404
+        if self.path == "/favicon.ico":
+            self.send_response(204)
+            self.end_headers()
+            return
+
         # Redirecionamento da raiz para o gerador
         if self.path == "/" or self.path == "":
             self.send_response(302)
@@ -73,26 +79,41 @@ class MatawasRequestHandler(http.server.SimpleHTTPRequestHandler):
         super().do_GET()
 
 def iniciar_servidor():
-    global PORT
-    socketserver.TCPServer.allow_reuse_address = True
-    porta_atual = PORT
-    for _ in range(5):
+    import threading
+
+    portas_ativas = []
+
+    def rodar_porta(porta):
+        socketserver.TCPServer.allow_reuse_address = True
         try:
-            with socketserver.TCPServer(("", porta_atual), MatawasRequestHandler) as httpd:
-                PORT = porta_atual
-                print(f"✓ Servidor Matawas Stories rodando na porta {PORT}")
-                print(f"👉 Acesse localmente: http://localhost:{PORT}")
-                print(f"👉 No celular (mesmo Wi-Fi): http://192.168.18.136:{PORT}")
-                try:
-                    httpd.serve_forever()
-                except KeyboardInterrupt:
-                    print("\nServidor encerrado.")
-                return
-        except OSError as e:
-            if e.errno == 48:  # Porta já em uso
-                porta_atual += 1
-            else:
-                raise e
+            with socketserver.TCPServer(("", porta), MatawasRequestHandler) as httpd:
+                portas_ativas.append(porta)
+                print(f"✓ Servidor Matawas Stories rodando na porta {porta}")
+                httpd.serve_forever()
+        except OSError:
+            pass
+
+    portas_candidatas = [8080, 8081, 8082]
+    threads = []
+    for p in portas_candidatas:
+        t = threading.Thread(target=rodar_porta, args=(p,), daemon=True)
+        t.start()
+        threads.append(t)
+
+    # Dá um tempo para os sockets subirem
+    import time
+    time.sleep(0.5)
+
+    print("👉 Acesse localmente por qualquer um dos links:")
+    for p in portas_ativas:
+        print(f"   • http://localhost:{p}")
+        print(f"   • http://192.168.18.136:{p}")
+
+    try:
+        while True:
+            time.sleep(1)
+    except KeyboardInterrupt:
+        print("\nServidor encerrado.")
 
 if __name__ == "__main__":
     iniciar_servidor()
