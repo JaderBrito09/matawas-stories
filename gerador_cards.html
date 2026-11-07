@@ -1914,50 +1914,96 @@ Prompt: Two round white pods shooting through outer space as a colossal crimson 
     /* ========================================================
        DESENHO MODULAR DOS COMPONENTES DO CARD NO CANVAS
        ======================================================== */
+    function quebrarTextoEmLinhasCanvas(ctx, texto, maxW) {
+      if (!texto) return [];
+      const paragrafos = texto.replace(/\r\n/g, '\n').split('\n');
+      const linhas = [];
+
+      for (const p of paragrafos) {
+        const palavras = p.trim().split(/\s+/).filter(Boolean);
+        if (palavras.length === 0) continue;
+
+        let linhaAtual = '';
+        for (const palavra of palavras) {
+          const teste = linhaAtual ? `${linhaAtual} ${palavra}` : palavra;
+          if (ctx.measureText(teste).width <= maxW) {
+            linhaAtual = teste;
+          } else {
+            if (linhaAtual) linhas.push(linhaAtual);
+            if (ctx.measureText(palavra).width > maxW) {
+              let pedaco = '';
+              for (const char of palavra) {
+                if (ctx.measureText(pedaco + char).width <= maxW) {
+                  pedaco += char;
+                } else {
+                  if (pedaco) linhas.push(pedaco);
+                  pedaco = char;
+                }
+              }
+              linhaAtual = pedaco;
+            } else {
+              linhaAtual = palavra;
+            }
+          }
+        }
+        if (linhaAtual) linhas.push(linhaAtual);
+      }
+      return linhas;
+    }
+
     function desenharSlotTexto(ctx, card, x, y, w, h, alpha = 1) {
       if (!card || alpha <= 0) return;
       ctx.save();
       ctx.globalAlpha = Math.min(1, Math.max(0, alpha));
 
       const imgH = h * 0.66;
-      const txtY = y + imgH;
-      const txtH = h - imgH;
+      const txtY = Math.round(y + imgH);
+      const txtH = Math.round(h - imgH);
+      const intX = Math.round(x);
 
       // Caixa de texto inferior (preto estilizado com contorno sutil)
       ctx.fillStyle = '#0d0e11';
-      ctx.fillRect(x + 2, txtY + 2, w - 4, txtH - 4);
+      ctx.fillRect(intX + 2, txtY + 2, w - 4, txtH - 4);
       ctx.strokeStyle = '#262c37';
       ctx.lineWidth = 4;
-      ctx.strokeRect(x + 2, txtY + 2, w - 4, txtH - 4);
+      ctx.strokeRect(intX + 2, txtY + 2, w - 4, txtH - 4);
 
-      // Renderizar texto
+      // Limites seguros para o texto nunca vazar do card
+      const maxW = w - 64; // Margem lateral de 32px de cada lado
+      const maxH = txtH - 44; // Margem vertical de 22px acima e abaixo
+
+      // Auto-Fit inteligente: ajusta o tamanho da fonte para caber perfeitamente qualquer tamanho de texto
+      let fontSize = 31;
+      let lineHeight = 42;
+      let linhas = [];
+
+      while (fontSize >= 17) {
+        ctx.font = `bold ${fontSize}px 'Montserrat', sans-serif`;
+        linhas = quebrarTextoEmLinhasCanvas(ctx, card.text || '', maxW);
+        const totalTextH = linhas.length * lineHeight;
+        if (totalTextH <= maxH || fontSize <= 17) {
+          break;
+        }
+        fontSize -= 2;
+        lineHeight = Math.round(fontSize * 1.36);
+      }
+
       ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 30px Montserrat, sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
 
-      const palavras = (card.text || '').split(' ');
-      let linhas = [];
-      let linhaAtual = '';
-      const maxW = w - 60;
+      // Sombra nítida para contraste absoluto contra compressão do YouTube
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.95)';
+      ctx.shadowBlur = 6;
+      ctx.shadowOffsetX = 0;
+      ctx.shadowOffsetY = 2;
 
-      palavras.forEach(p => {
-        const teste = linhaAtual ? linhaAtual + ' ' + p : p;
-        if (ctx.measureText(teste).width > maxW) {
-          linhas.push(linhaAtual);
-          linhaAtual = p;
-        } else {
-          linhaAtual = teste;
-        }
-      });
-      if (linhaAtual) linhas.push(linhaAtual);
-
-      const totalTextH = linhas.length * 40;
-      let startY = txtY + (txtH / 2) - (totalTextH / 2) + 20;
+      const totalCalculadoH = linhas.length * lineHeight;
+      let startY = Math.round(txtY + (txtH / 2) - (totalCalculadoH / 2) + (lineHeight / 2));
 
       linhas.forEach(linha => {
-        ctx.fillText(linha, x + (w / 2), startY);
-        startY += 40;
+        ctx.fillText(linha, Math.round(intX + (w / 2)), startY);
+        startY += lineHeight;
       });
 
       ctx.restore();
@@ -1969,13 +2015,15 @@ Prompt: Two round white pods shooting through outer space as a colossal crimson 
       ctx.globalAlpha = Math.min(1, Math.max(0, alpha));
 
       const imgH = h * 0.66;
+      const intX = Math.round(x);
+      const intY = Math.round(y);
 
       // Borda e fundo do card
       ctx.fillStyle = '#16181d';
       ctx.strokeStyle = '#2e3542';
       ctx.lineWidth = 4;
-      ctx.fillRect(x, y, w, imgH);
-      ctx.strokeRect(x, y, w, imgH);
+      ctx.fillRect(intX, intY, w, imgH);
+      ctx.strokeRect(intX, intY, w, imgH);
 
       if (card._loadedImg) {
         const img = card._loadedImg;
@@ -1987,17 +2035,17 @@ Prompt: Two round white pods shooting through outer space as a colossal crimson 
 
         ctx.save();
         ctx.beginPath();
-        ctx.rect(x + 2, y + 2, w - 4, imgH - 4);
+        ctx.rect(intX + 2, intY + 2, w - 4, imgH - 4);
         ctx.clip();
-        ctx.drawImage(img, sx, sy, sw, sh, x + 2, y + 2, w - 4, imgH - 4);
+        ctx.drawImage(img, sx, sy, sw, sh, intX + 2, intY + 2, w - 4, imgH - 4);
         ctx.restore();
       } else {
         ctx.fillStyle = '#1f242e';
-        ctx.fillRect(x + 2, y + 2, w - 4, imgH - 4);
+        ctx.fillRect(intX + 2, intY + 2, w - 4, imgH - 4);
         ctx.fillStyle = '#747d8c';
-        ctx.font = '22px Montserrat, sans-serif';
+        ctx.font = "bold 24px 'Montserrat', sans-serif";
         ctx.textAlign = 'center';
-        ctx.fillText(`Imagem #${card.title}`, x + (w / 2), y + (imgH / 2));
+        ctx.fillText(`Imagem #${card.title}`, Math.round(intX + (w / 2)), Math.round(intY + (imgH / 2)));
       }
 
       ctx.restore();
@@ -2031,14 +2079,15 @@ Prompt: Two round white pods shooting through outer space as a colossal crimson 
 
     /* RENDERIZAÇÃO DA TRANSIÇÃO DOS 3 PRIMEIROS CARDS (ESTILO OFICIAL GOKUSHOW) */
     function renderizarQuadroIntro(outCtx, cards, tempoAtual) {
-      // Fundo cinematográfico característico da transição oficial
-      outCtx.fillStyle = '#5c616c';
+      // Fundo cinematográfico idêntico ao da esteira para transição 100% perfeita
+      outCtx.fillStyle = '#0f1013';
       outCtx.fillRect(0, 0, 1920, 1080);
 
+      // Posições EXATAMENTE alinhadas com o grid da esteira (margin: 20, gap: 25, cardW: 620)
       const slots = [
-        { x: 25, y: 20, w: 620, h: 1040, txtT: 0.2, imgT: 1.8 },
-        { x: 670, y: 20, w: 620, h: 1040, txtT: 2.5, imgT: 3.9 },
-        { x: 1315, y: 20, w: 620, h: 1040, txtT: 4.6, imgT: 6.0 }
+        { x: 20, y: 20, w: 620, h: 1040, txtT: 0.2, imgT: 1.6 },
+        { x: 665, y: 20, w: 620, h: 1040, txtT: 2.4, imgT: 3.8 },
+        { x: 1310, y: 20, w: 620, h: 1040, txtT: 4.6, imgT: 6.0 }
       ];
 
       for (let i = 0; i < slots.length; i++) {
@@ -2051,11 +2100,10 @@ Prompt: Two round white pods shooting through outer space as a colossal crimson 
           desenharSlotTexto(outCtx, cards[i], slot.x, slot.y, slot.w, slot.h, alphaTxt);
         }
 
-        // 2. Imagem surge logo em seguida
+        // 2. Imagem surge logo em seguida com suave pop-in
         if (tempoAtual >= slot.imgT) {
           const progressImg = Math.min(1, (tempoAtual - slot.imgT) / 0.3);
           const alphaImg = progressImg;
-          // Efeito sutil de pop in (scale 0.96 até 1.0)
           const scaleImg = 0.96 + (0.04 * progressImg);
           desenharSlotImagem(outCtx, cards[i], slot.x, slot.y, slot.w, slot.h, alphaImg, scaleImg);
         }
@@ -2097,8 +2145,8 @@ Prompt: Two round white pods shooting through outer space as a colossal crimson 
       const lastIndex = Math.min(cards.length - 1, Math.ceil((maxX - margin) / step));
 
       for (let i = firstIndex; i <= lastIndex; i++) {
-        const cardX = (margin + i * step) - currentScrollX;
-        if (cardX + cardW >= -10 && cardX <= 1930) {
+        const cardX = Math.round((margin + i * step) - currentScrollX);
+        if (cardX + cardW >= -20 && cardX <= 1940) {
           desenharSlotImagem(outCtx, cards[i], cardX, 20, cardW, cardH, 1, 1);
           desenharSlotTexto(outCtx, cards[i], cardX, 20, cardW, cardH, 1);
         }
@@ -2200,8 +2248,11 @@ Prompt: Two round white pods shooting through outer space as a colossal crimson 
         try { wakeLock = await navigator.wakeLock.request('screen'); } catch (e) {}
       }
 
-      statusText.innerText = "1/3: Otimizando e pré-carregando imagens dos cards...";
+      statusText.innerText = "1/3: Sincronizando fontes tipográficas e imagens...";
       progressFill.style.width = "10%";
+      if (document.fonts) {
+        try { await document.fonts.ready; } catch (e) {}
+      }
       await precarregarTodasImagens();
 
       if (gravacaoCancelada) {
@@ -2214,7 +2265,8 @@ Prompt: Two round white pods shooting through outer space as a colossal crimson 
       const targetW = resSelect === '720' ? 1280 : 1920;
       const targetH = resSelect === '720' ? 720 : 1080;
       const scaleRatio = targetW / 1920;
-      const targetBitrate = targetW === 1920 ? 6000000 : 3500000;
+      // Taxa de bits oficial recomendada pelo YouTube (8 Mbps para 1080p, 4.5 Mbps para 720p)
+      const targetBitrate = targetW === 1920 ? 8000000 : 4500000;
 
       const cardW = 620;
       const cardH = 1040;
@@ -2224,7 +2276,7 @@ Prompt: Two round white pods shooting through outer space as a colossal crimson 
       const durPorCard = parseFloat(document.getElementById('videoCardDuration').value) || 5;
       const enableIntro = document.getElementById('enableIntroTransition')?.checked !== false;
 
-      const introDur = enableIntro ? 7.5 : 0; // segundos de transição inicial
+      const introDur = enableIntro ? 8.2 : 0; // 8.2s para leitura tranquila do Card 3 antes do scroll
       const scrollDur = enableIntro 
         ? Math.max(4, (cards.length - 1) * durPorCard) 
         : (cards.length * durPorCard);
@@ -2253,7 +2305,16 @@ Prompt: Two round white pods shooting through outer space as a colossal crimson 
         } else {
           const tempoScroll = enableIntro ? (tempo - introDur) : tempo;
           const progressoScroll = Math.min(1, Math.max(0, tempoScroll / scrollDur));
-          const currentScrollX = progressoScroll * maxDeslocamento;
+          
+          // Aceleração suave nos primeiros 1.2s de scroll para início cinematográfico e sem tranco
+          let progressoAjustado = progressoScroll;
+          const rampa = Math.min(0.08, 1.2 / scrollDur);
+          if (progressoScroll < rampa && rampa > 0) {
+            const t = progressoScroll / rampa;
+            progressoAjustado = rampa * (t * t * (3 - 2 * t));
+          }
+
+          const currentScrollX = progressoAjustado * maxDeslocamento;
           desenharQuadroEsteira(outCtx, cards, currentScrollX);
         }
 
@@ -2270,24 +2331,57 @@ Prompt: Two round white pods shooting through outer space as a colossal crimson 
 
       if (suportaWebCodecs) {
         try {
-          const codecsCandidatos = ['avc1.42001f', 'avc1.42E01E', 'avc1.4d002a', 'avc1.640028'];
+          // Seleciona codecs em conformidade estrita com as especificações do YouTube
+          const codecsCandidatos = targetW === 1920 ? [
+            'avc1.64002a', // H.264 High Profile Level 4.2 (Até 1080p 60fps) - Padrão Ouro do YouTube
+            'avc1.640028', // H.264 High Profile Level 4.0 (1080p 30fps)
+            'avc1.4d002a', // H.264 Main Profile Level 4.2
+            'avc1.4d0028', // H.264 Main Profile Level 4.0
+            'avc1.420028'  // H.264 Baseline Level 4.0 (compatibilidade ampla)
+          ] : [
+            'avc1.64001f', // High Profile Level 3.1 (720p)
+            'avc1.4d001f', // Main Profile Level 3.1 (720p)
+            'avc1.42001f'  // Baseline Level 3.1 (720p)
+          ];
+
           let codecValido = null;
+          let usarAvcConfig = false;
+
           for (const c of codecsCandidatos) {
-            const check = await VideoEncoder.isConfigSupported({
-              codec: c,
-              width: targetW,
-              height: targetH,
-              bitrate: targetBitrate,
-              framerate: fps
-            });
-            if (check && check.supported) {
-              codecValido = c;
-              break;
-            }
+            try {
+              const checkWithAvc = await VideoEncoder.isConfigSupported({
+                codec: c,
+                width: targetW,
+                height: targetH,
+                bitrate: targetBitrate,
+                framerate: fps,
+                avc: { format: 'avc' }
+              });
+              if (checkWithAvc && checkWithAvc.supported) {
+                codecValido = c;
+                usarAvcConfig = true;
+                break;
+              }
+            } catch (e) {}
+
+            try {
+              const checkBasic = await VideoEncoder.isConfigSupported({
+                codec: c,
+                width: targetW,
+                height: targetH,
+                bitrate: targetBitrate,
+                framerate: fps
+              });
+              if (checkBasic && checkBasic.supported) {
+                codecValido = c;
+                usarAvcConfig = false;
+                break;
+              }
+            } catch (e) {}
           }
 
           if (codecValido) {
-            statusText.innerText = `2/3: Inicializando codificador MP4 (${targetW}x${targetH})...`;
+            statusText.innerText = `2/3: Inicializando codificador MP4 (${targetW}x${targetH} ${codecValido})...`;
             progressFill.style.width = "15%";
 
             const muxer = new Mp4Muxer.Muxer({
@@ -2305,17 +2399,23 @@ Prompt: Two round white pods shooting through outer space as a colossal crimson 
               error: (err) => console.error("Erro VideoEncoder:", err)
             });
 
-            await encoder.configure({
+            const encoderConfig = {
               codec: codecValido,
               width: targetW,
               height: targetH,
               bitrate: targetBitrate,
-              framerate: fps
-            });
+              framerate: fps,
+              latencyMode: 'quality'
+            };
+            if (usarAvcConfig) {
+              encoderConfig.avc = { format: 'avc' };
+            }
+
+            await encoder.configure(encoderConfig);
 
             const frameDurationMicros = Math.round(1_000_000 / fps);
 
-            for (let frame = 0; frame <= totalFrames; frame++) {
+            for (let frame = 0; frame < totalFrames; frame++) {
               if (gravacaoCancelada) {
                 encoder.close();
                 fecharModalExportarVideo();
@@ -2343,11 +2443,13 @@ Prompt: Two round white pods shooting through outer space as a colossal crimson 
                 duration: frameDurationMicros
               });
 
-              encoder.encode(videoFrame, { keyFrame: (frame % (fps * 2) === 0) });
+              // Keyframe regular a cada 1 segundo (30 frames) para busca ágil e zero corrupção no YouTube
+              const isKey = (frame % fps === 0) || (frame === 0);
+              encoder.encode(videoFrame, { keyFrame: isKey });
               videoFrame.close();
 
               // Cede a vez ao navegador a cada 2 quadros para tela e mouse responderem 100% livres
-              if (frame % 2 === 0 || frame === totalFrames) {
+              if (frame % 2 === 0 || frame === totalFrames - 1) {
                 const pct = Math.round(15 + ((frame / totalFrames) * 80));
                 progressFill.style.width = `${pct}%`;
                 statusText.innerText = `Renderizando: ${Math.round((frame/totalFrames)*100)}% (${(frame/fps).toFixed(1)}s / ${duracaoTotal.toFixed(1)}s)`;
@@ -2374,16 +2476,19 @@ Prompt: Two round white pods shooting through outer space as a colossal crimson 
         statusText.innerText = "2/3: Configurando gravador...";
         progressFill.style.width = "25%";
 
-        mimeType = 'video/mp4; codecs="avc1.42E01E"';
+        mimeType = 'video/mp4; codecs="avc1.640028"';
         extensao = 'mp4';
         if (!MediaRecorder.isTypeSupported(mimeType)) {
-          mimeType = 'video/mp4';
+          mimeType = 'video/mp4; codecs="avc1.4d002a"';
           if (!MediaRecorder.isTypeSupported(mimeType)) {
-            mimeType = 'video/webm; codecs=vp9';
-            extensao = 'webm';
+            mimeType = 'video/mp4';
             if (!MediaRecorder.isTypeSupported(mimeType)) {
-              mimeType = 'video/webm';
+              mimeType = 'video/webm; codecs=vp9';
               extensao = 'webm';
+              if (!MediaRecorder.isTypeSupported(mimeType)) {
+                mimeType = 'video/webm';
+                extensao = 'webm';
+              }
             }
           }
         }
