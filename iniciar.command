@@ -18,3 +18,4 @@ fi
 open "http://localhost:8080"
 
 echo "✓ Pronto! O estúdio abriu no seu navegador."
+

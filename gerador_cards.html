@@ -755,6 +755,9 @@
       <div class="player-controls">
         <button class="btn-primary" id="btnPlayPause" onclick="togglePlay()">Play / Pausar Animação</button>
         <button class="btn-secondary" onclick="resetScroll()">Reiniciar Início</button>
+        <button class="btn-secondary" id="btnToggleAudioPreview" onclick="toggleAudioPreview()" title="Tocar ou mutar a música no preview" style="display:flex; align-items:center; gap:6px;">
+          <span id="audioPreviewIcon">🔊</span> Música
+        </button>
         <div class="slider-container">
           <label style="font-size: 13px; color: var(--text-muted);">Posição do Scroll:</label>
           <input type="range" id="scrollSlider" min="0" max="100" value="0" oninput="onSliderMove(this.value)">
@@ -768,6 +771,7 @@
           </select>
         </div>
       </div>
+      <audio id="previewAudioElement" src="trilha_padrao.mp3" loop preload="auto"></audio>
     </div>
 
     <!-- SEÇÃO DE GERENCIAMENTO DOS CARDS -->
@@ -819,6 +823,14 @@
         <div class="video-config-row">
           <label>Transição Oficial dos 3 Cards (Estilo GokuShow):</label>
           <input type="checkbox" id="enableIntroTransition" checked style="width:22px; height:22px; accent-color:#ff4757; cursor:pointer;">
+        </div>
+
+        <div class="video-config-row">
+          <label>Música de Fundo Padrão (Trilha GokuShow):</label>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <input type="checkbox" id="enableAudioTrack" checked style="width:22px; height:22px; accent-color:#ff4757; cursor:pointer;">
+            <span style="font-size:12.5px; color:#2ed573; font-weight:700;">🎵 Trilha Ativa (Auto-loop &amp; Fade)</span>
+          </div>
         </div>
 
         <div class="video-config-row">
@@ -1893,13 +1905,35 @@ Prompt: Two round white pods shooting through outer space as a colossal crimson 
       dispararAutoSave();
     }
 
-    /* CONTROLES DA ANIMAÇÃO DE SCROLL */
+    /* CONTROLES DA ANIMAÇÃO DE SCROLL E ÁUDIO */
+    let previewAudioAtivo = true;
+
+    function toggleAudioPreview() {
+      previewAudioAtivo = !previewAudioAtivo;
+      const icon = document.getElementById('audioPreviewIcon');
+      const audioEl = document.getElementById('previewAudioElement');
+      if (icon) icon.innerText = previewAudioAtivo ? '🔊' : '🔇';
+      if (!previewAudioAtivo && audioEl) {
+        audioEl.pause();
+      } else if (previewAudioAtivo && isPlaying && audioEl) {
+        audioEl.play().catch(() => {});
+      }
+      mostrarToast(previewAudioAtivo ? "🔊 Música ativada no preview" : "🔇 Música mutada no preview");
+    }
+
     function togglePlay() {
       isPlaying = !isPlaying;
       document.getElementById('btnPlayPause').innerText = isPlaying ? 'Pausar Animação' : 'Play Animação';
+      const audioEl = document.getElementById('previewAudioElement');
       if (isPlaying) {
+        if (previewAudioAtivo && audioEl) {
+          audioEl.play().catch(() => {});
+        }
         animar();
       } else {
+        if (audioEl) {
+          audioEl.pause();
+        }
         cancelAnimationFrame(animationId);
       }
     }
@@ -1928,6 +1962,10 @@ Prompt: Two round white pods shooting through outer space as a colossal crimson 
       scrollPos = 0;
       document.getElementById('conveyorBelt').style.transform = `translateX(0px)`;
       document.getElementById('scrollSlider').value = 0;
+      const audioEl = document.getElementById('previewAudioElement');
+      if (audioEl) {
+        audioEl.currentTime = 0;
+      }
     }
 
     function onSliderMove(val) {
@@ -2261,6 +2299,100 @@ Prompt: Two round white pods shooting through outer space as a colossal crimson 
       mostrarToast("Renderização cancelada.");
     }
 
+    /* ========================================================
+       GERENCIAMENTO DE ÁUDIO E TRILHA SONORA (Tema GokuShow)
+       ======================================================== */
+    let bufferTrilhaPadraoCache = null;
+
+    async function obterAudioBufferTrilha() {
+      if (bufferTrilhaPadraoCache) {
+        return bufferTrilhaPadraoCache;
+      }
+
+      try {
+        const resp = await fetch('trilha_padrao.mp3');
+        if (!resp.ok) throw new Error("Falha ao baixar trilha_padrao.mp3");
+        const arrayBuf = await resp.arrayBuffer();
+
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 44100 });
+        bufferTrilhaPadraoCache = await audioCtx.decodeAudioData(arrayBuf);
+        audioCtx.close().catch(() => {});
+        return bufferTrilhaPadraoCache;
+      } catch (err) {
+        console.warn("Não foi possível carregar a trilha sonora padrão:", err);
+        return null;
+      }
+    }
+
+    // Renderiza a trilha estendida ou ajustada na duração exata do vídeo com fade-out suave no final
+    async function renderizarTrilhaParaDuracao(duracaoTotalSegundos) {
+      const audioBufferBase = await obterAudioBufferTrilha();
+      if (!audioBufferBase) return null;
+
+      const sampleRate = 44100;
+      const totalFrames = Math.ceil(duracaoTotalSegundos * sampleRate);
+      const offlineCtx = new OfflineAudioContext(2, totalFrames, sampleRate);
+
+      const gainNode = offlineCtx.createGain();
+      gainNode.connect(offlineCtx.destination);
+      gainNode.gain.setValueAtTime(1.0, 0);
+
+      // Fade-out suave nos últimos 1.5s para término limpo sem corte seco
+      const fadeInicio = Math.max(0, duracaoTotalSegundos - 1.5);
+      gainNode.gain.setValueAtTime(1.0, fadeInicio);
+      gainNode.gain.linearRampToValueAtTime(0.001, duracaoTotalSegundos);
+
+      // Estende / repete (loop) a música continuamente até cobrir todo o vídeo
+      let offset = 0;
+      while (offset < duracaoTotalSegundos) {
+        const source = offlineCtx.createBufferSource();
+        source.buffer = audioBufferBase;
+        source.connect(gainNode);
+        source.start(offset);
+        offset += audioBufferBase.duration;
+      }
+
+      return await offlineCtx.startRendering();
+    }
+
+    // Codifica o AudioBuffer PCM em pacotes AAC para o MP4-Muxer
+    async function codificarAudioParaMuxer(renderedBuffer, audioEncoder) {
+      if (!renderedBuffer || !audioEncoder) return;
+
+      const channel0 = renderedBuffer.getChannelData(0);
+      const channel1 = renderedBuffer.numberOfChannels > 1 ? renderedBuffer.getChannelData(1) : channel0;
+      const sampleRate = renderedBuffer.sampleRate;
+      const chunkSize = 1024; // Padrão AAC (1024 amostras por frame)
+      let frameOffset = 0;
+
+      while (frameOffset < renderedBuffer.length) {
+        const framesInChunk = Math.min(chunkSize, renderedBuffer.length - frameOffset);
+        const planarData = new Float32Array(framesInChunk * 2);
+
+        // Formato f32-planar esperado pelo WebCodecs: canal 0 seguido pelo canal 1
+        planarData.set(channel0.subarray(frameOffset, frameOffset + framesInChunk), 0);
+        planarData.set(channel1.subarray(frameOffset, frameOffset + framesInChunk), framesInChunk);
+
+        const timestampMicros = Math.round((frameOffset / sampleRate) * 1_000_000);
+
+        const audioData = new AudioData({
+          format: 'f32-planar',
+          sampleRate: sampleRate,
+          numberOfFrames: framesInChunk,
+          numberOfChannels: 2,
+          timestamp: timestampMicros,
+          data: planarData
+        });
+
+        audioEncoder.encode(audioData);
+        audioData.close();
+
+        frameOffset += framesInChunk;
+      }
+
+      await audioEncoder.flush();
+    }
+
     async function iniciarGravacaoVideo() {
       gravacaoCancelada = false;
       document.getElementById('modalConfigForm').style.display = 'none';
@@ -2275,7 +2407,7 @@ Prompt: Two round white pods shooting through outer space as a colossal crimson 
         try { wakeLock = await navigator.wakeLock.request('screen'); } catch (e) {}
       }
 
-      statusText.innerText = "1/3: Sincronizando fontes tipográficas e imagens...";
+      statusText.innerText = "1/3: Sincronizando imagens e fontes tipográficas...";
       progressFill.style.width = "10%";
       if (document.fonts) {
         try { await document.fonts.ready; } catch (e) {}
@@ -2308,6 +2440,18 @@ Prompt: Two round white pods shooting through outer space as a colossal crimson 
         ? Math.max(4, (cards.length - 1) * durPorCard) 
         : (cards.length * durPorCard);
       const duracaoTotal = introDur + scrollDur;
+
+      // Renderiza trilha sonora oficial estendida na duração exata do vídeo
+      let audioBufferVideo = null;
+      const incluirAudio = document.getElementById('enableAudioTrack')?.checked !== false;
+      if (incluirAudio) {
+        try {
+          statusText.innerText = "1/3: Preparando trilha sonora oficial estendida...";
+          audioBufferVideo = await renderizarTrilhaParaDuracao(duracaoTotal);
+        } catch (err) {
+          console.warn("Falha ao processar trilha de áudio:", err);
+        }
+      }
 
       const totalFaixaW = (cards.length * cardW) + ((cards.length - 1) * gap) + (margin * 2);
       const maxDeslocamento = Math.max(0, totalFaixaW - 1920);
@@ -2411,6 +2555,36 @@ Prompt: Two round white pods shooting through outer space as a colossal crimson 
             statusText.innerText = `2/3: Inicializando codificador MP4 (${targetW}x${targetH} ${codecValido})...`;
             progressFill.style.width = "15%";
 
+            // Configuração do codificador de áudio AAC
+            let audioEncoder = null;
+            let usarAudioNoMuxer = false;
+
+            if (audioBufferVideo && typeof window.AudioEncoder === 'function' && typeof window.AudioData === 'function') {
+              try {
+                const aCheck = await AudioEncoder.isConfigSupported({
+                  codec: 'mp4a.40.2',
+                  sampleRate: 44100,
+                  numberOfChannels: 2,
+                  bitrate: 128000
+                });
+                if (aCheck && aCheck.supported) {
+                  audioEncoder = new AudioEncoder({
+                    output: (chunk, meta) => muxer.addAudioChunk(chunk, meta),
+                    error: (e) => console.error("Erro AudioEncoder:", e)
+                  });
+                  await audioEncoder.configure({
+                    codec: 'mp4a.40.2',
+                    sampleRate: 44100,
+                    numberOfChannels: 2,
+                    bitrate: 128000
+                  });
+                  usarAudioNoMuxer = true;
+                }
+              } catch (aErr) {
+                console.warn("AudioEncoder AAC não inicializado:", aErr);
+              }
+            }
+
             const muxer = new Mp4Muxer.Muxer({
               target: new Mp4Muxer.ArrayBufferTarget(),
               video: {
@@ -2418,6 +2592,13 @@ Prompt: Two round white pods shooting through outer space as a colossal crimson 
                 width: targetW,
                 height: targetH
               },
+              ...(usarAudioNoMuxer ? {
+                audio: {
+                  codec: 'aac',
+                  numberOfChannels: 2,
+                  sampleRate: 44100
+                }
+              } : {}),
               fastStart: 'in-memory'
             });
 
@@ -2445,6 +2626,7 @@ Prompt: Two round white pods shooting through outer space as a colossal crimson 
             for (let frame = 0; frame < totalFrames; frame++) {
               if (gravacaoCancelada) {
                 encoder.close();
+                if (audioEncoder) audioEncoder.close();
                 fecharModalExportarVideo();
                 return;
               }
@@ -2458,6 +2640,7 @@ Prompt: Two round white pods shooting through outer space as a colossal crimson 
 
               if (gravacaoCancelada) {
                 encoder.close();
+                if (audioEncoder) audioEncoder.close();
                 fecharModalExportarVideo();
                 return;
               }
@@ -2477,15 +2660,25 @@ Prompt: Two round white pods shooting through outer space as a colossal crimson 
 
               // Cede a vez ao navegador a cada 2 quadros para tela e mouse responderem 100% livres
               if (frame % 2 === 0 || frame === totalFrames - 1) {
-                const pct = Math.round(15 + ((frame / totalFrames) * 80));
+                const pct = Math.round(15 + ((frame / totalFrames) * 75));
                 progressFill.style.width = `${pct}%`;
                 statusText.innerText = `Renderizando: ${Math.round((frame/totalFrames)*100)}% (${(frame/fps).toFixed(1)}s / ${duracaoTotal.toFixed(1)}s)`;
                 await new Promise(r => requestAnimationFrame(r));
               }
             }
 
-            statusText.innerText = "Finalizando empacotamento MP4...";
+            // Codifica o áudio estendido para o muxer antes do fechamento
+            if (usarAudioNoMuxer && audioEncoder && audioBufferVideo) {
+              statusText.innerText = "Processando e sincronizando trilha sonora AAC...";
+              progressFill.style.width = "94%";
+              await codificarAudioParaMuxer(audioBufferVideo, audioEncoder);
+            }
+
+            statusText.innerText = "Finalizando empacotamento MP4 com áudio...";
             await encoder.flush();
+            if (audioEncoder) {
+              await audioEncoder.flush();
+            }
             muxer.finalize();
 
             videoBlob = new Blob([muxer.target.buffer], { type: 'video/mp4' });
@@ -2500,7 +2693,7 @@ Prompt: Two round white pods shooting through outer space as a colossal crimson 
 
       // 4. FALLBACK SEGURO VIA MEDIARECORDER COM CONTROLE DE CANCELAMENTO
       if (!usouWebCodecs && !gravacaoCancelada) {
-        statusText.innerText = "2/3: Configurando gravador...";
+        statusText.innerText = "2/3: Configurando gravador com trilha sonora...";
         progressFill.style.width = "25%";
 
         mimeType = 'video/mp4; codecs="avc1.640028"';
@@ -2520,7 +2713,28 @@ Prompt: Two round white pods shooting through outer space as a colossal crimson 
           }
         }
 
-        const stream = outCanvas.captureStream(fps);
+        // Conecta o áudio sintetizado no stream gravado
+        let audioCtxFallback = null;
+        let audioTrackFallback = null;
+        if (audioBufferVideo) {
+          try {
+            audioCtxFallback = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 44100 });
+            const sourceNode = audioCtxFallback.createBufferSource();
+            sourceNode.buffer = audioBufferVideo;
+            const destNode = audioCtxFallback.createMediaStreamDestination();
+            sourceNode.connect(destNode);
+            sourceNode.start(0);
+            audioTrackFallback = destNode.stream.getAudioTracks()[0];
+          } catch (e) {
+            console.warn("Erro ao configurar áudio no fallback:", e);
+          }
+        }
+
+        const streamTracks = [...outCanvas.captureStream(fps).getVideoTracks()];
+        if (audioTrackFallback) {
+          streamTracks.push(audioTrackFallback);
+        }
+        const stream = new MediaStream(streamTracks);
         const recorder = new MediaRecorder(stream, {
           mimeType: mimeType,
           videoBitsPerSecond: targetBitrate
@@ -2543,6 +2757,7 @@ Prompt: Two round white pods shooting through outer space as a colossal crimson 
         while (true) {
           if (gravacaoCancelada) {
             recorder.stop();
+            if (audioCtxFallback) audioCtxFallback.close().catch(() => {});
             fecharModalExportarVideo();
             return;
           }
@@ -2564,7 +2779,10 @@ Prompt: Two round white pods shooting through outer space as a colossal crimson 
         }
 
         recorder.stop();
-        statusText.innerText = "Processando vídeo final...";
+        if (audioCtxFallback) {
+          audioCtxFallback.close().catch(() => {});
+        }
+        statusText.innerText = "Processando vídeo final com áudio...";
         videoBlob = await gravacaoPromise;
       }
 
