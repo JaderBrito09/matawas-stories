@@ -721,6 +721,9 @@
         <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
         Exportar Vídeo (1080p)
       </button>
+      <button class="btn-secondary" onclick="abrirModalNovoProjeto()" title="Inicia um novo projeto limpo sem precisar excluir card por card" style="border-color: rgba(255, 71, 87, 0.4); color: #ff6b81;">
+        📄 Novo Projeto
+      </button>
       <button class="btn-secondary" onclick="salvarProjeto()" title="Salva o projeto em um arquivo exclusivo .matawa">
         💾 Salvar Projeto (.matawa)
       </button>
@@ -772,6 +775,7 @@
       <div class="management-header">
         <h2>Quadrinhos da História (${cards.length})</h2>
         <div style="display:flex; gap:10px; flex-wrap:wrap;">
+          <button class="btn-secondary" style="padding: 7px 12px; font-size: 13px; border-color: rgba(255, 71, 87, 0.4); color: #ff6b81;" onclick="abrirModalNovoProjeto()" title="Limpar todos os cards e começar novo projeto">📄 Novo Projeto</button>
           <button class="btn-gemini-resolve" style="padding: 7px 14px; font-size: 13px;" onclick="abrirModalGeminiResolve()">🧠 O Gemini Resolve</button>
           <button class="btn-youtube" onclick="abrirModalExportarVideo()">🎬 Exportar Vídeo Direto</button>
           <button class="btn-primary" onclick="adicionarNovoCardVazio()">+ Adicionar Cena</button>
@@ -987,6 +991,29 @@
     <div style="display:flex; gap:8px;">
       <button id="btnPauseGeminiResolve" class="btn-secondary" style="padding:6px 12px; font-size:12px;" onclick="togglePausarGeminiResolve()">⏸️ Pausar</button>
       <button class="btn-secondary" style="padding:6px 12px; font-size:12px; border-color:#ff4757; color:#ff4757;" onclick="cancelarGeminiResolve()">🛑 Parar</button>
+    </div>
+  </div>
+
+  <!-- MODAL DE CONFIRMAÇÃO DE NOVO PROJETO -->
+  <div class="modal-overlay" id="novoProjetoModal">
+    <div class="modal-box" style="max-width: 520px; text-align: center;">
+      <div style="font-size: 38px; margin-bottom: 10px;">📄</div>
+      <h3 style="color: #fff; font-size: 22px; margin-bottom: 8px;">Iniciar Novo Projeto?</h3>
+      <p style="font-size: 14px; color: var(--text-muted); margin-bottom: 22px; line-height: 1.45;" id="novoProjetoDescText">
+        Isso limpará todas as cenas atuais para você começar uma nova história do zero, sem precisar excluir card por card.
+      </p>
+
+      <div style="display: flex; flex-direction: column; gap: 10px;">
+        <button class="btn-primary" style="padding: 13px; font-weight: 700; font-size: 14px; background: #ff4757; border: none; cursor: pointer; border-radius: 8px;" onclick="executarCriacaoNovoProjeto()">
+          🗑️ Sim, Limpar Tudo e Começar Novo Projeto
+        </button>
+        <button class="btn-secondary" style="padding: 11px; font-weight: 600; font-size: 13.5px;" onclick="salvarAntesDeNovoProjeto()">
+          💾 Salvar Cópia do Projeto Atual Primeiro (.matawa)
+        </button>
+        <button class="btn-secondary" style="padding: 10px; font-size: 13px; opacity: 0.8;" onclick="fecharModalNovoProjeto()">
+          Cancelar
+        </button>
+      </div>
     </div>
   </div>
 
@@ -2704,6 +2731,52 @@ Prompt: Two round white pods shooting through outer space as a colossal crimson 
       };
 
       reader.readAsText(file);
+    }
+
+    /* CONTROLE DE NOVO PROJETO */
+    function abrirModalNovoProjeto() {
+      const modal = document.getElementById('novoProjetoModal');
+      const desc = document.getElementById('novoProjetoDescText');
+      if (desc) {
+        desc.innerText = `Você tem atualmente ${cards.length} card${cards.length > 1 ? 's' : ''} no projeto. Deseja limpar tudo para começar um novo projeto em branco?`;
+      }
+      if (modal) modal.style.display = 'flex';
+    }
+
+    function fecharModalNovoProjeto() {
+      const modal = document.getElementById('novoProjetoModal');
+      if (modal) modal.style.display = 'none';
+    }
+
+    function salvarAntesDeNovoProjeto() {
+      salvarProjeto();
+      mostrarToast("💾 Cópia do projeto atual salva com sucesso!");
+    }
+
+    function executarCriacaoNovoProjeto() {
+      fecharModalNovoProjeto();
+
+      // Cancela qualquer execução do Gemini Resolve se estiver rodando
+      if (typeof cancelarGeminiResolve === 'function' && geminiResolveState && geminiResolveState.isRunning) {
+        cancelarGeminiResolve();
+      }
+
+      // Reinicia os cards para um projeto limpo com 1 card em branco
+      cards = [
+        {
+          id: Date.now(),
+          title: "Cena 1",
+          image: null,
+          text: "Escreva aqui o primeiro acontecimento da sua história..."
+        }
+      ];
+
+      resetScroll();
+      renderEditor();
+      renderPreview();
+      dispararAutoSave();
+
+      mostrarToast("✨ Novo Projeto criado com sucesso! Comece sua nova história.");
     }
 
     // Inicialização
