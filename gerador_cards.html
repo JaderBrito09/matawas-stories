@@ -1976,51 +1976,6 @@
       }, 2500);
     }
 
-      if (wakeLock) {
-        wakeLock.release().catch(() => {});
-      }
-
-      statusText.innerText = "Preparando arquivo para a Galeria...";
-      progressFill.style.width = "98%";
-
-      // 5. Salvamento direto na Galeria de Fotos (Mobile: iOS / Android)
-      let salvoViaShare = false;
-      if (navigator.canShare) {
-        try {
-          const videoFile = new File([videoBlob], `video_historia_${Date.now()}.${extensao}`, { type: mimeType });
-          if (navigator.canShare({ files: [videoFile] })) {
-            statusText.innerText = "📱 Toque em 'Salvar Vídeo' para enviar para a Galeria de Fotos!";
-            await navigator.share({
-              title: "Vídeo Manga Stories",
-              text: "Salvar vídeo na Galeria de Fotos",
-              files: [videoFile]
-            });
-            salvoViaShare = true;
-            mostrarToast("📱 Selecione 'Salvar Vídeo' na tela para guardar nas Fotos!");
-          }
-        } catch (err) {
-          console.log("Compartilhamento nativo cancelado pelo usuário ou fallback:", err);
-        }
-      }
-
-      // Fallback para download clássico (Desktop ou navegadores sem Web Share)
-      if (!salvoViaShare) {
-        const videoUrl = URL.createObjectURL(videoBlob);
-        const downloadLink = document.createElement('a');
-        downloadLink.href = videoUrl;
-        downloadLink.download = `video_historia_youtube_1080p.${extensao}`;
-        downloadLink.click();
-        mostrarToast(`✓ Vídeo baixado com sucesso! (${extensao.toUpperCase()})`);
-      }
-
-      statusText.innerText = `✓ Concluído com sucesso!`;
-      progressFill.style.width = "100%";
-
-      setTimeout(() => {
-        fecharModalExportarVideo();
-      }, 2500);
-    }
-
     /* ========================================================
        SISTEMA EXCLUSIVO DE SALVAR / CARREGAR PROJETO (.matawa)
        ======================================================== */
