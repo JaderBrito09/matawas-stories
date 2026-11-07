@@ -657,6 +657,50 @@
     .guide-box li {
       margin-bottom: 4px;
     }
+
+    /* BOTÃO E WIDGET DE O GEMINI RESOLVE */
+    .btn-gemini-resolve {
+      background: linear-gradient(135deg, #7c3aed, #4f46e5, #06b6d4);
+      color: #ffffff;
+      font-weight: 800;
+      letter-spacing: 0.3px;
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      box-shadow: 0 4px 18px rgba(124, 58, 237, 0.45);
+      position: relative;
+      overflow: hidden;
+      transition: all 0.2s ease;
+    }
+
+    .btn-gemini-resolve:hover {
+      background: linear-gradient(135deg, #8b5cf6, #6366f1, #22d3ee);
+      transform: translateY(-1.5px) scale(1.02);
+      box-shadow: 0 6px 24px rgba(124, 58, 237, 0.65);
+    }
+
+    .gemini-resolve-bar {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(18, 22, 31, 0.96);
+      border: 1px solid #7c3aed;
+      border-radius: 16px;
+      padding: 14px 22px;
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.75), 0 0 20px rgba(124, 58, 237, 0.35);
+      backdrop-filter: blur(12px);
+      z-index: 1050;
+      display: none;
+      align-items: center;
+      gap: 16px;
+      max-width: 680px;
+      width: 90%;
+      animation: slideUpFade 0.3s ease;
+    }
+
+    @keyframes slideUpFade {
+      from { opacity: 0; transform: translate(-50%, 20px); }
+      to { opacity: 1; transform: translate(-50%, 0); }
+    }
   </style>
 </head>
 <body>
@@ -670,6 +714,9 @@
       <div id="aiQueuePill" style="display:none; align-items:center; gap:6px; background:linear-gradient(135deg, #4285f4, #ea4335, #fbbc05, #34a853); padding:7px 14px; border-radius:20px; font-size:12.5px; font-weight:700; color:#fff; box-shadow:0 0 14px rgba(66,133,244,0.5);">
         <span>⚡</span> <span id="aiQueueCount">1</span> gerando com IA...
       </div>
+      <button class="btn-gemini-resolve" onclick="abrirModalGeminiResolve()" title="Cole seu roteiro com cenas e deixe o Gemini criar todos os cards e imagens automaticamente!">
+        🧠 O Gemini Resolve
+      </button>
       <button class="btn-youtube" onclick="abrirModalExportarVideo()">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
         Exportar Vídeo (1080p)
@@ -724,7 +771,8 @@
     <div class="cards-management">
       <div class="management-header">
         <h2>Quadrinhos da História (${cards.length})</h2>
-        <div style="display:flex; gap:10px;">
+        <div style="display:flex; gap:10px; flex-wrap:wrap;">
+          <button class="btn-gemini-resolve" style="padding: 7px 14px; font-size: 13px;" onclick="abrirModalGeminiResolve()">🧠 O Gemini Resolve</button>
           <button class="btn-youtube" onclick="abrirModalExportarVideo()">🎬 Exportar Vídeo Direto</button>
           <button class="btn-primary" onclick="adicionarNovoCardVazio()">+ Adicionar Cena</button>
         </div>
@@ -860,6 +908,85 @@
         <div style="font-size: 16px; font-weight: 700; color: #ffa502; margin-top: 18px;" id="aiLoadingTitle">✨ Criando ilustração com Google Gemini...</div>
         <p style="font-size: 13px; color: var(--text-muted); margin-top: 6px;" id="aiLoadingSubtitle">O Gemini está gerando a imagem na proporção exata da sua cartinha (600x680).</p>
       </div>
+    </div>
+  </div>
+
+  <!-- MODAL O GEMINI RESOLVE (Automação de Roteiro e Geração de Cenas) -->
+  <div class="modal-overlay" id="geminiResolveModal">
+    <div class="modal-box" style="max-width: 680px; text-align: left;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+        <h3 style="background: linear-gradient(135deg, #a78bfa, #818cf8, #38bdf8); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-size: 22px; margin:0;">
+          🧠 O Gemini Resolve
+        </h3>
+        <span id="geminiResolveBadgeCount" style="background:#2e1065; color:#c084fc; border:1px solid #7c3aed; padding:4px 12px; border-radius:12px; font-size:12px; font-weight:700;">
+          0 cenas detectadas
+        </span>
+      </div>
+      <p style="margin-bottom: 14px; font-size: 13.5px; color: var(--text-muted); line-height: 1.45;">
+        Cole seu roteiro com <strong>Cena</strong>, <strong>Legenda</strong> e <strong>Prompt</strong>. O app criará todos os cards automaticamente e gerará as ilustrações com o Gemini de forma suave e contínua, sem travar seu computador!
+      </p>
+
+      <!-- Chave API do Gemini -->
+      <div style="background: #111317; border: 1px solid #282f3a; border-radius: 8px; padding: 10px 14px; margin-bottom: 12px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+          <label style="font-size: 12px; font-weight: 700; color: #ced6e0;">🔑 Chave da API Gemini (Google AI Studio):</label>
+          <a href="https://aistudio.google.com/app/apikey" target="_blank" style="color: #2ed573; font-size: 11.5px; text-decoration: underline; font-weight: 600;">Obter Chave Grátis ↗</a>
+        </div>
+        <input type="password" id="geminiResolveApiKeyInput" placeholder="Cole sua chave Gemini ou deixe vazio se já estiver configurada no .env..." style="width: 100%; background: #1c212b; border: 1px solid #3b4453; border-radius: 6px; color: #fff; padding: 7px 10px; font-size: 12.5px;" onchange="salvarChaveGemini(this.value)">
+      </div>
+
+      <!-- Textarea do Roteiro -->
+      <div style="margin-bottom: 12px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+          <label style="font-size: 12.5px; font-weight: 700; color: #ced6e0;">Cole o Roteiro Completo:</label>
+          <button type="button" onclick="carregarExemploGeminiResolve()" style="background:rgba(124, 58, 237, 0.15); border:1px solid rgba(124, 58, 237, 0.4); color:#c084fc; font-size:11.5px; font-weight:700; padding:4px 10px; border-radius:6px; cursor:pointer;" title="Preenche o campo com o roteiro de exemplo do Bardock">
+            ✨ Colar Roteiro de Exemplo
+          </button>
+        </div>
+        <textarea id="geminiResolveTextarea" rows="8" style="width: 100%; background: #111317; border: 1px solid #333a47; border-radius: 8px; color: #fff; padding: 12px; font-family: inherit; font-size: 13px; resize: vertical; line-height: 1.45;" placeholder="Cena 1&#10;Legenda: On Planet Vegeta, Bardock uncovered Frieza’s impending treachery against the Saiyans.&#10;&#10;Prompt: Bardock standing in a dark alley on Planet Vegeta, staring up at Frieza's massive floating spaceship with a clenched fist and bleeding cheek.&#10;&#10;Cena 2&#10;Legenda: Refusing to let his bloodline die, Bardock brought young Raditz home in secret.&#10;&#10;Prompt: Bardock wearing cracked battle armor walking swiftly into a small Saiyan home..." oninput="atualizarPreviewParserGeminiResolve()"></textarea>
+      </div>
+
+      <!-- Opção de Modo de Inserção -->
+      <div style="background:#111317; border:1px solid #282f3a; border-radius:8px; padding:10px 14px; margin-bottom:18px; display:flex; gap:18px; align-items:center; font-size:13px; flex-wrap:wrap;">
+        <label style="display:flex; align-items:center; gap:6px; cursor:pointer; color:#ced6e0;">
+          <input type="radio" name="geminiResolveMode" value="replace" checked>
+          <span>Substituir cards atuais (Novo Episódio)</span>
+        </label>
+        <label style="display:flex; align-items:center; gap:6px; cursor:pointer; color:#ced6e0;">
+          <input type="radio" name="geminiResolveMode" value="append">
+          <span>Adicionar ao final dos existentes</span>
+        </label>
+      </div>
+
+      <div style="display: flex; gap: 12px;">
+        <button class="btn-secondary" style="flex: 1;" onclick="fecharModalGeminiResolve()">Fechar</button>
+        <button class="btn-gemini-resolve" style="flex: 2; padding: 12px; font-size: 14.5px;" onclick="executarGeminiResolve()">
+          🚀 Executar "O Gemini Resolve"
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- BARRA FLUTUANTE DE EXECUÇÃO DO GEMINI RESOLVE -->
+  <div class="gemini-resolve-bar" id="geminiResolveFloatingBar">
+    <div style="flex: 1; min-width: 0;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+        <div style="font-weight:700; font-size:13px; color:#fff; display:flex; align-items:center; gap:6px;">
+          <span class="mini-spinner" style="width:14px; height:14px; border-width:2px;"></span>
+          <span id="geminiResolveStatusTitle">🧠 O Gemini Resolve em andamento...</span>
+        </div>
+        <div id="geminiResolveStatusCounter" style="font-size:12px; font-weight:700; color:#c084fc;">0/0</div>
+      </div>
+      <div style="background:#252b36; height:6px; border-radius:3px; overflow:hidden;">
+        <div id="geminiResolveBarFill" style="width:0%; height:100%; background:linear-gradient(90deg, #7c3aed, #06b6d4); transition:width 0.3s ease;"></div>
+      </div>
+      <div id="geminiResolveStatusScene" style="font-size:11.5px; color:var(--text-muted); margin-top:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+        Aguardando início...
+      </div>
+    </div>
+    <div style="display:flex; gap:8px;">
+      <button id="btnPauseGeminiResolve" class="btn-secondary" style="padding:6px 12px; font-size:12px;" onclick="togglePausarGeminiResolve()">⏸️ Pausar</button>
+      <button class="btn-secondary" style="padding:6px 12px; font-size:12px; border-color:#ff4757; color:#ff4757;" onclick="cancelarGeminiResolve()">🛑 Parar</button>
     </div>
   </div>
 
@@ -1004,7 +1131,7 @@
             <div class="mini-card-preview" id="mini-card-${card.id}" title="Prévia da sua Cartinha">
               <div class="mini-card-img-slot">
                 ${card._gerandoIA 
-                  ? `<div class="ai-inline-loading"><div class="mini-spinner"></div><span>✨ Criando com IA...</span></div>`
+                  ? `<div class="ai-inline-loading"><div class="mini-spinner"></div><span>${card._statusTexto || '✨ Criando com IA...'}</span></div>`
                   : (card.image 
                       ? `<img src="${card.image}" alt="Cena ${index + 1}">` 
                       : `<div style="color:#747d8c; font-size:11px; text-align:center; padding:10px; font-weight:700;">Sem Imagem<br><span style="font-size:9.5px; opacity:0.7;">(IA ou Arquivo)</span></div>`
@@ -1226,7 +1353,8 @@
       iniciarProcessamentoIAEmSegundoPlano(targetCardId, prompt, geminiKey);
     }
 
-    async function iniciarProcessamentoIAEmSegundoPlano(cardId, prompt, geminiKey) {
+    // MOTOR PRINCIPAL DE GERAÇÃO DE IMAGEM (Gemini 3.1 Flash Image + Contingência Pollinations)
+    async function gerarImagemBase64(prompt, geminiKey) {
       // FÓRMULA OFICIAL DE PROMPT DO GEMINI PARA ANIME MODERNO DE ALTA DEFINIÇÃO
       const formulaPrompt = `High quality modern anime illustration, crisp lines, vibrant vivid colors, cinematic lighting, dynamic atmosphere, sharp focus, detailed digital anime artwork: ${prompt}, masterpiece, 8k resolution, clean composition`;
 
@@ -1274,7 +1402,7 @@
             }
           }
         } catch (err) {
-          console.warn(`Falha na API Gemini para Card #${cardId}, tentando contingência:`, err);
+          console.warn('Falha na API Gemini, tentando contingência:', err);
         }
       }
 
@@ -1300,11 +1428,17 @@
             img.src = imageUrl;
           });
         } catch (pollErr) {
-          console.warn(`Falha no motor de contingência para Card #${cardId}:`, pollErr);
+          console.warn('Falha no motor de contingência:', pollErr);
         }
       }
 
-      // 3. FINALIZAÇÃO DA TAREFA ESPECÍFICA DESTE CARD
+      return base64Data;
+    }
+
+    async function iniciarProcessamentoIAEmSegundoPlano(cardId, prompt, geminiKey) {
+      const base64Data = await gerarImagemBase64(prompt, geminiKey);
+
+      // Finalização da tarefa deste card individual
       atualizarContadorFilaIA(-1);
       const card = cards.find(c => c.id === cardId);
       if (card) {
@@ -1324,6 +1458,337 @@
       }
     }
 
+    /* ========================================================
+       SISTEMA "O GEMINI RESOLVE" (Automação de Roteiro e Fila Controlada)
+       ======================================================== */
+    let geminiResolveState = {
+      isRunning: false,
+      isPaused: false,
+      isCancelled: false,
+      queue: [],
+      currentIndex: 0,
+      total: 0
+    };
+
+    function parsearRoteiroGeminiResolve(texto) {
+      if (!texto || !texto.trim()) return [];
+      const cenas = [];
+      const limpo = texto.replace(/\r\n/g, "\n").trim();
+
+      // Divide por marcadores de cena (Cena 1, Scene 1, Card 1, ou numeração 1.)
+      let blocos = limpo.split(/(?:^|\n)(?=(?:(?:Cena|Scene|Quadro|Card)\s*\d+|\d+[\.\-]\s*(?:Legenda|Prompt|Cena)))/i);
+
+      if (blocos.length <= 1 && !/(?:Cena|Scene|Quadro|Card)\s*\d+/i.test(limpo)) {
+        // Fallback: tentar quebras de parágrafo contendo Legenda ou Prompt
+        blocos = limpo.split(/\n\s*\n(?=[^\n]*(?:Legenda|Prompt|Imagem):)/i);
+      }
+
+      for (let bloco of blocos) {
+        bloco = bloco.trim();
+        if (!bloco) continue;
+
+        // Título da cena
+        const matchTitulo = bloco.match(/^(?:Cena|Scene|Quadro|Card|\#)?\s*(\d+)[:\s-]*(.*)/i);
+        const num = matchTitulo ? matchTitulo[1] : (cenas.length + 1);
+        const title = `Cena ${num}`;
+
+        // Extrair Legenda
+        let legenda = "";
+        const matchLegenda = bloco.match(/(?:^|\n)(?:Legenda|Texto|Hist[óo]ria|Narrador|Subtitle)\s*[:\-]\s*([\s\S]*?)(?=(?:\n(?:Prompt|Cena|Scene|Quadro|Card|\d+[\.\-])\b|$))/i);
+        if (matchLegenda) {
+          legenda = matchLegenda[1].trim();
+        }
+
+        // Extrair Prompt
+        let prompt = "";
+        const matchPrompt = bloco.match(/(?:^|\n)(?:Prompt|Imagem|Visual|Image|Descri[çc][ãa]o)\s*[:\-]\s*([\s\S]*?)(?=(?:\n(?:Legenda|Texto|Cena|Scene|Quadro|Card|\d+[\.\-])\b|$))/i);
+        if (matchPrompt) {
+          prompt = matchPrompt[1].trim();
+        }
+
+        // Se não encontrou cabeçalho explícito
+        if (!legenda && !prompt) {
+          const linhas = bloco.split("\n").map(l => l.trim()).filter(Boolean);
+          if (linhas.length > 1) {
+            legenda = linhas.slice(1).join(" ");
+            prompt = legenda;
+          }
+        } else if (!prompt && legenda) {
+          prompt = legenda;
+        } else if (!legenda && prompt) {
+          legenda = prompt;
+        }
+
+        if (legenda || prompt) {
+          cenas.push({ numero: parseInt(num, 10) || (cenas.length + 1), title, legenda, prompt });
+        }
+      }
+      return cenas;
+    }
+
+    function abrirModalGeminiResolve() {
+      const modal = document.getElementById('geminiResolveModal');
+      const keyInput = document.getElementById('geminiResolveApiKeyInput');
+      const activeKey = serverEnvConfig.apiKey || localStorage.getItem('matawas_gemini_api_key') || '';
+      if (keyInput) {
+        keyInput.value = activeKey;
+      }
+      if (modal) modal.style.display = 'flex';
+      atualizarPreviewParserGeminiResolve();
+    }
+
+    function fecharModalGeminiResolve() {
+      const modal = document.getElementById('geminiResolveModal');
+      if (modal) modal.style.display = 'none';
+    }
+
+    function atualizarPreviewParserGeminiResolve() {
+      const textarea = document.getElementById('geminiResolveTextarea');
+      const badge = document.getElementById('geminiResolveBadgeCount');
+      if (!textarea || !badge) return;
+
+      const texto = textarea.value;
+      const cenas = parsearRoteiroGeminiResolve(texto);
+      const qtd = cenas.length;
+
+      if (qtd === 0) {
+        badge.innerText = '0 cenas detectadas';
+        badge.style.background = '#2e1065';
+        badge.style.borderColor = '#7c3aed';
+        badge.style.color = '#c084fc';
+      } else {
+        badge.innerText = `✓ ${qtd} cena${qtd > 1 ? 's' : ''} pronta${qtd > 1 ? 's' : ''}`;
+        badge.style.background = '#064e3b';
+        badge.style.borderColor = '#10b981';
+        badge.style.color = '#6ee7b7';
+      }
+    }
+
+    function carregarExemploGeminiResolve() {
+      const textarea = document.getElementById('geminiResolveTextarea');
+      if (!textarea) return;
+      textarea.value = `Cena 1
+Legenda: On Planet Vegeta, Bardock uncovered Frieza’s impending treachery against the Saiyans.
+
+Prompt: Bardock standing in a dark alley on Planet Vegeta, staring up at Frieza's massive floating spaceship with a clenched fist and bleeding cheek.
+
+Cena 2
+Legenda: Refusing to let his bloodline die, Bardock brought young Raditz home in secret.
+
+Prompt: Bardock wearing cracked battle armor walking swiftly into a small Saiyan home, pulling a young Raditz with wild long black hair by the hand.
+
+Cena 3
+Legenda: Gine wept quietly as she prepared two space pods instead of one.
+
+Prompt: Gine with tears in her eyes adjusting the interior seat of a white round Saiyan space pod next to an incubator containing baby Kakarot.
+
+Cena 4
+Legenda: Bardock commanded Raditz to protect his infant brother no matter the cost.
+
+Prompt: Bardock kneeling down, placing his heavy hand on young Raditz's shoulder, looking fiercely into the boy's wide trembling eyes.
+
+Cena 5
+Legenda: The two pods launched into the dark cosmos moments before the supernova struck.
+
+Prompt: Two round white pods shooting through outer space as a colossal crimson supernova incinerates Planet Vegeta in the far background.`;
+      atualizarPreviewParserGeminiResolve();
+      mostrarToast("✨ Roteiro de exemplo carregado com sucesso!");
+    }
+
+    async function executarGeminiResolve() {
+      if (geminiResolveState.isRunning) {
+        mostrarToast("O Gemini Resolve já está em execução no momento.", true);
+        return;
+      }
+
+      const textarea = document.getElementById('geminiResolveTextarea');
+      const texto = textarea ? textarea.value.trim() : '';
+      if (!texto) {
+        mostrarToast("Cole o roteiro com suas cenas para iniciar.", true);
+        return;
+      }
+
+      const cenas = parsearRoteiroGeminiResolve(texto);
+      if (cenas.length === 0) {
+        mostrarToast("Nenhuma cena identificada. Verifique o formato com 'Cena 1', 'Legenda:' e 'Prompt:'.", true);
+        return;
+      }
+
+      // Salva chave se digitada
+      const keyInput = document.getElementById('geminiResolveApiKeyInput');
+      const rawKey = keyInput ? keyInput.value.trim() : '';
+      if (rawKey) {
+        localStorage.setItem('matawas_gemini_api_key', rawKey);
+      }
+      const activeKey = rawKey || serverEnvConfig.apiKey || localStorage.getItem('matawas_gemini_api_key') || '';
+
+      const modeRadio = document.querySelector('input[name="geminiResolveMode"]:checked');
+      const mode = modeRadio ? modeRadio.value : 'replace';
+
+      // 1. Criação imediata de todos os cards
+      const timestampBase = Date.now();
+      const novosCards = cenas.map((cena, idx) => ({
+        id: timestampBase + idx * 10,
+        title: cena.title || `Cena ${idx + 1}`,
+        image: null,
+        text: cena.legenda,
+        _promptOriginal: cena.prompt,
+        _gerandoIA: true,
+        _statusTexto: '⏳ Na fila da IA...'
+      }));
+
+      if (mode === 'replace') {
+        cards = novosCards;
+      } else {
+        cards.push(...novosCards);
+      }
+
+      // Renderiza na tela instantaneamente para o usuário ver todos os cards e legendas
+      renderEditor();
+      renderPreview();
+      dispararAutoSave();
+
+      // 2. Prepara a fila de execução controlada
+      geminiResolveState.queue = novosCards.map(c => ({
+        cardId: c.id,
+        title: c.title,
+        legenda: c.text,
+        prompt: c._promptOriginal
+      }));
+      geminiResolveState.total = geminiResolveState.queue.length;
+      geminiResolveState.currentIndex = 0;
+      geminiResolveState.isPaused = false;
+      geminiResolveState.isCancelled = false;
+
+      // 3. Fecha o modal e abre a barra flutuante de progresso
+      fecharModalGeminiResolve();
+      const bar = document.getElementById('geminiResolveFloatingBar');
+      if (bar) bar.style.display = 'flex';
+
+      mostrarToast(`🚀 O Gemini Resolve iniciou a geração de ${geminiResolveState.total} cenas com IA!`);
+
+      // 4. Inicia processamento suave em fila
+      processarFilaGeminiResolve(activeKey);
+    }
+
+    async function processarFilaGeminiResolve(activeKey) {
+      geminiResolveState.isRunning = true;
+      const total = geminiResolveState.total;
+
+      for (let i = 0; i < geminiResolveState.queue.length; i++) {
+        if (geminiResolveState.isCancelled) break;
+
+        // Suporte a pausa interativa
+        while (geminiResolveState.isPaused && !geminiResolveState.isCancelled) {
+          await new Promise(r => setTimeout(r, 400));
+        }
+        if (geminiResolveState.isCancelled) break;
+
+        const item = geminiResolveState.queue[i];
+        geminiResolveState.currentIndex = i + 1;
+
+        // Atualiza UI da barra flutuante
+        const titleEl = document.getElementById('geminiResolveStatusTitle');
+        const counterEl = document.getElementById('geminiResolveStatusCounter');
+        const barFill = document.getElementById('geminiResolveBarFill');
+        const sceneEl = document.getElementById('geminiResolveStatusScene');
+
+        if (titleEl) titleEl.innerText = `🧠 O Gemini Resolve (${i + 1} de ${total})`;
+        if (counterEl) counterEl.innerText = `${i + 1}/${total}`;
+        if (sceneEl) sceneEl.innerText = `🎨 ${item.title}: ${item.prompt.substring(0, 80)}...`;
+        if (barFill) barFill.style.width = `${((i) / total) * 100}%`;
+
+        // Marca o card atual como 'Criando com Gemini...'
+        const cardAtual = cards.find(c => c.id === item.cardId);
+        if (cardAtual) {
+          cardAtual._statusTexto = '✨ Criando ilustração...';
+          renderEditor();
+        }
+
+        // Gera a imagem usando Gemini (ou contingência automática)
+        const base64Data = await gerarImagemBase64(item.prompt, activeKey);
+
+        if (geminiResolveState.isCancelled) break;
+
+        // Atualiza a imagem do card na hora
+        const cardFinal = cards.find(c => c.id === item.cardId);
+        if (cardFinal) {
+          cardFinal._gerandoIA = false;
+          if (base64Data) {
+            cardFinal.image = base64Data;
+            cardFinal._loadedImg = null;
+          }
+          renderEditor();
+          renderPreview();
+          dispararAutoSave();
+        }
+
+        // Atualiza barra de progresso após finalização desta cena
+        if (barFill) barFill.style.width = `${((i + 1) / total) * 100}%`;
+
+        // INTERVALO DE SEGURANÇA NÃO-BLOQUEANTE:
+        // Pausa de 1.5s entre chamadas da IA para poupar CPU/RAM e respeitar cotas da API Gemini
+        if (i < geminiResolveState.queue.length - 1 && !geminiResolveState.isCancelled) {
+          await new Promise(r => setTimeout(r, 1500));
+        }
+      }
+
+      // Encerramento
+      geminiResolveState.isRunning = false;
+      const bar = document.getElementById('geminiResolveFloatingBar');
+
+      if (geminiResolveState.isCancelled) {
+        mostrarToast("⏹️ O Gemini Resolve foi interrompido.", true);
+        if (bar) bar.style.display = 'none';
+      } else {
+        const titleEl = document.getElementById('geminiResolveStatusTitle');
+        const sceneEl = document.getElementById('geminiResolveStatusScene');
+        if (titleEl) titleEl.innerText = "🎉 O Gemini Resolve concluiu todas as cenas!";
+        if (sceneEl) sceneEl.innerText = "Todas as ilustrações e legendas foram sincronizadas e salvas.";
+        mostrarToast("🎉 Todas as cenas foram geradas e salvas com sucesso!");
+        setTimeout(() => {
+          if (bar && !geminiResolveState.isRunning) bar.style.display = 'none';
+        }, 3500);
+      }
+    }
+
+    function togglePausarGeminiResolve() {
+      geminiResolveState.isPaused = !geminiResolveState.isPaused;
+      const btn = document.getElementById('btnPauseGeminiResolve');
+      const titleEl = document.getElementById('geminiResolveStatusTitle');
+
+      if (geminiResolveState.isPaused) {
+        if (btn) btn.innerText = "▶️ Retomar";
+        if (titleEl) titleEl.innerText = "⏸️ O Gemini Resolve (Pausado)";
+        mostrarToast("O Gemini Resolve foi pausado temporariamente.");
+      } else {
+        if (btn) btn.innerText = "⏸️ Pausar";
+        if (titleEl) titleEl.innerText = "🧠 O Gemini Resolve em andamento...";
+        mostrarToast("Retomando geração das cenas...");
+      }
+    }
+
+    function cancelarGeminiResolve() {
+      geminiResolveState.isCancelled = true;
+      geminiResolveState.isRunning = false;
+
+      // Desmarca os cards restantes que estavam na fila
+      cards.forEach(c => {
+        if (c._gerandoIA) {
+          c._gerandoIA = false;
+          c._statusTexto = '';
+        }
+      });
+
+      renderEditor();
+      renderPreview();
+      dispararAutoSave();
+
+      const bar = document.getElementById('geminiResolveFloatingBar');
+      if (bar) bar.style.display = 'none';
+      mostrarToast("⏹️ O Gemini Resolve foi cancelado pelo usuário.", true);
+    }
+
     function renderPreview() {
       const conveyor = document.getElementById('conveyorBelt');
       conveyor.innerHTML = '';
@@ -1334,7 +1799,7 @@
         cardEl.innerHTML = `
           <div class="comic-image-slot">
             ${card._gerandoIA 
-              ? `<div class="ai-inline-loading" style="font-size:14px;"><div class="mini-spinner" style="width:36px; height:36px;"></div><span style="font-size:13px;">✨ Criando com IA...</span></div>`
+              ? `<div class="ai-inline-loading" style="font-size:14px;"><div class="mini-spinner" style="width:36px; height:36px;"></div><span style="font-size:13px;">${card._statusTexto || '✨ Criando com IA...'}</span></div>`
               : (card.image 
                   ? `<img src="${card.image}" alt="Cena ${index + 1}">` 
                   : `<div class="comic-image-placeholder">Imagem da Cena #${index + 1}<br><span style="font-size:11px; opacity:0.7;">(Upload no painel abaixo)</span></div>`
