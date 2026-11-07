@@ -1,0 +1,2146 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gerador de Vídeos Manga Stories (Estilo GokuShow / YouTube 1080p)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="mp4-muxer.min.js"></script>
+  <style>
+    :root {
+      --bg-main: #0c0e12;
+      --bg-card: #15181f;
+      --bg-panel: #1e222b;
+      --border-color: #2b313d;
+      --accent: #ff4757;
+      --accent-hover: #ff6b81;
+      --yt-red: #ff0000;
+      --yt-hover: #cc0000;
+      --text-main: #f1f2f6;
+      --text-muted: #a4b0be;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: var(--bg-main);
+      color: var(--text-main);
+      padding: 24px;
+      line-height: 1.5;
+    }
+
+    header {
+      max-width: 1300px;
+      margin: 0 auto 28px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 16px;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 20px;
+    }
+
+    .header-title h1 {
+      font-size: 26px;
+      font-weight: 800;
+      background: linear-gradient(135deg, #ff4757, #ffa502);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      letter-spacing: -0.5px;
+    }
+
+    .header-title p {
+      color: var(--text-muted);
+      font-size: 14px;
+      margin-top: 4px;
+    }
+
+    .top-actions {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    button {
+      cursor: pointer;
+      font-family: inherit;
+      font-weight: 600;
+      border-radius: 8px;
+      padding: 10px 18px;
+      border: none;
+      transition: all 0.2s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+    }
+
+    .btn-youtube {
+      background: linear-gradient(135deg, #ff0000, #c40000);
+      color: #ffffff;
+      font-weight: 700;
+      box-shadow: 0 4px 15px rgba(255, 0, 0, 0.35);
+    }
+
+    .btn-youtube:hover {
+      background: linear-gradient(135deg, #ff2222, #e60000);
+      transform: translateY(-1px);
+      box-shadow: 0 6px 20px rgba(255, 0, 0, 0.45);
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: #fff;
+    }
+
+    .btn-primary:hover {
+      background: var(--accent-hover);
+      transform: translateY(-1px);
+    }
+
+    .btn-secondary {
+      background: var(--bg-panel);
+      color: var(--text-main);
+      border: 1px solid var(--border-color);
+    }
+
+    .btn-secondary:hover {
+      background: #252b36;
+      border-color: #404959;
+    }
+
+    .btn-success {
+      background: #2ed573;
+      color: #0b2214;
+      font-weight: 700;
+    }
+
+    .btn-success:hover {
+      background: #3ee585;
+    }
+
+    .container {
+      max-width: 1300px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 32px;
+    }
+
+    /* PREVIEW PLAYER (16:9 Estilo Vídeo do YouTube) */
+    .preview-section {
+      background: #111317;
+      border-radius: 14px;
+      border: 1px solid var(--border-color);
+      padding: 20px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+    }
+
+    .preview-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 14px;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .preview-header h2 {
+      font-size: 17px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .badge-169 {
+      background: #2f3542;
+      color: #ced6e0;
+      font-size: 11px;
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-weight: 700;
+    }
+
+    .player-window {
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      background: #0f1013;
+      border-radius: 10px;
+      overflow: hidden;
+      position: relative;
+      border: 2px solid #232731;
+    }
+
+    .conveyor-belt {
+      display: flex;
+      height: 100%;
+      padding: 1.5% 1%;
+      gap: 20px;
+      position: absolute;
+      top: 0;
+      left: 0;
+      transition: transform 0.05s linear;
+      will-change: transform;
+    }
+
+    /* CARD INDIVIDUAL NA ESTEIRA */
+    .comic-card {
+      height: 100%;
+      aspect-ratio: 620 / 1040;
+      background: #16181d;
+      border: 2px solid #2e3542;
+      border-radius: 10px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      flex-shrink: 0;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+    }
+
+    .comic-image-slot {
+      height: 66%;
+      background: #1c2029;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      border-bottom: 2px solid #262c37;
+    }
+
+    .comic-image-slot img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: center;
+    }
+
+    .comic-image-placeholder {
+      color: #57606f;
+      text-align: center;
+      font-size: 13px;
+      padding: 12px;
+      font-weight: 600;
+    }
+
+    .comic-text-slot {
+      height: 34%;
+      background: #0d0e11;
+      padding: 14px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+    }
+
+    .comic-text-slot p {
+      color: #ffffff;
+      font-family: 'Montserrat', sans-serif;
+      font-weight: 700;
+      font-size: clamp(10px, 1.35vw, 19px);
+      line-height: 1.35;
+      letter-spacing: -0.2px;
+    }
+
+    /* CONTROLES DO PLAYER */
+    .player-controls {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-top: 14px;
+      flex-wrap: wrap;
+    }
+
+    .slider-container {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 200px;
+    }
+
+    input[type="range"] {
+      flex: 1;
+      accent-color: var(--accent);
+    }
+
+    /* LISTA DE CARDS PARA EDIÇÃO */
+    .cards-management {
+      background: var(--bg-card);
+      border-radius: 14px;
+      border: 1px solid var(--border-color);
+      padding: 24px;
+    }
+
+    .management-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .cards-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(440px, 1fr));
+      gap: 24px;
+    }
+
+    .card-editor-item {
+      background: var(--bg-panel);
+      border: 1px solid var(--border-color);
+      border-radius: 14px;
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      box-shadow: 0 4px 18px rgba(0,0,0,0.3);
+    }
+
+    .card-editor-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      padding-bottom: 10px;
+    }
+
+    .card-editor-header h3 {
+      font-size: 15px;
+      font-weight: 700;
+      color: #ffa502;
+    }
+
+    .btn-delete {
+      background: transparent;
+      color: #ff6b81;
+      padding: 4px 8px;
+      font-size: 13px;
+    }
+
+    .btn-delete:hover {
+      background: rgba(255, 71, 87, 0.1);
+    }
+
+    /* MINI CARTINHA REALISTA NO EDITOR */
+    .card-editor-body {
+      display: flex;
+      gap: 18px;
+      align-items: stretch;
+      flex-wrap: wrap;
+    }
+
+    .mini-card-preview {
+      width: 160px;
+      aspect-ratio: 620 / 1040;
+      background: #16181d;
+      border: 2px solid #2e3542;
+      border-radius: 8px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .mini-card-preview:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 28px rgba(0,0,0,0.8);
+      border-color: var(--accent);
+    }
+
+    .mini-card-img-slot {
+      height: 66%;
+      background: #1c2029;
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-bottom: 2px solid #262c37;
+    }
+
+    .mini-card-img-slot img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: center;
+    }
+
+    .ai-inline-loading {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      background: linear-gradient(135deg, rgba(66, 133, 244, 0.15), rgba(234, 67, 53, 0.15), rgba(251, 188, 5, 0.15), rgba(52, 168, 83, 0.15));
+      animation: aiPulse 2s ease-in-out infinite;
+      padding: 8px;
+      text-align: center;
+    }
+
+    .ai-inline-loading span {
+      font-size: 10.5px;
+      font-weight: 700;
+      color: #ffa502;
+      text-shadow: 0 0 6px rgba(255, 165, 2, 0.5);
+    }
+
+    @keyframes aiPulse {
+      0%, 100% { opacity: 0.85; }
+      50% { opacity: 1; filter: brightness(1.25); }
+    }
+
+    .mini-spinner {
+      width: 22px;
+      height: 22px;
+      border: 3px solid rgba(255, 255, 255, 0.15);
+      border-top-color: #ffa502;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    .mini-card-txt-slot {
+      height: 34%;
+      background: #0d0e11;
+      padding: 6px 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+    }
+
+    .mini-card-txt-slot p {
+      color: #ffffff;
+      font-family: 'Montserrat', sans-serif;
+      font-weight: 700;
+      font-size: 9.5px;
+      line-height: 1.35;
+      letter-spacing: -0.2px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      display: -webkit-box;
+      -webkit-line-clamp: 4;
+      -webkit-box-orient: vertical;
+    }
+
+    .card-editor-controls {
+      flex: 1;
+      min-width: 200px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .btn-ai {
+      background: linear-gradient(135deg, #8a2be2, #ff4757);
+      color: #ffffff;
+      font-weight: 700;
+      box-shadow: 0 4px 15px rgba(138, 43, 226, 0.35);
+      border: none;
+    }
+
+    .btn-ai:hover {
+      background: linear-gradient(135deg, #9b45ea, #ff6b81);
+      transform: translateY(-1px);
+      box-shadow: 0 6px 20px rgba(138, 43, 226, 0.5);
+    }
+
+    .style-chip {
+      background: #252b36;
+      border: 1px solid #3b4453;
+      color: #ced6e0;
+      padding: 5px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .style-chip:hover {
+      background: var(--accent);
+      color: #fff;
+      border-color: var(--accent);
+    }
+
+    .ai-spinner {
+      width: 44px;
+      height: 44px;
+      border: 4px solid rgba(255, 71, 87, 0.2);
+      border-top-color: #ff4757;
+      border-right-color: #8a2be2;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin: 0 auto;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .textarea-wrapper textarea {
+      width: 100%;
+      background: #111317;
+      border: 1px solid #2f3542;
+      border-radius: 6px;
+      color: #fff;
+      font-family: 'Montserrat', sans-serif;
+      font-weight: 700;
+      font-size: 13px;
+      padding: 10px 12px;
+      resize: vertical;
+      min-height: 80px;
+    }
+
+    .textarea-wrapper textarea:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+
+    .card-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    /* MODAL DE RENDERIZAÇÃO DO VÍDEO */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.85);
+      backdrop-filter: blur(8px);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+    }
+
+    .modal-box {
+      background: #181c24;
+      border: 1px solid #333a47;
+      border-radius: 16px;
+      padding: 32px;
+      max-width: 520px;
+      width: 90%;
+      text-align: center;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7);
+    }
+
+    .modal-box h3 {
+      font-size: 20px;
+      font-weight: 800;
+      margin-bottom: 8px;
+    }
+
+    .modal-box p {
+      color: var(--text-muted);
+      font-size: 14px;
+      margin-bottom: 24px;
+    }
+
+    .video-config-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #111317;
+      border: 1px solid #282f3a;
+      padding: 12px 16px;
+      border-radius: 8px;
+      margin-bottom: 12px;
+      text-align: left;
+    }
+
+    .video-config-row label {
+      font-size: 13px;
+      font-weight: 600;
+      color: #ced6e0;
+    }
+
+    .video-config-row select {
+      background: #1c212b;
+      color: #fff;
+      border: 1px solid #3b4453;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-weight: 600;
+      font-size: 13px;
+    }
+
+    .progress-bar-bg {
+      width: 100%;
+      height: 12px;
+      background: #252b36;
+      border-radius: 6px;
+      overflow: hidden;
+      margin: 20px 0 10px;
+    }
+
+    .progress-bar-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #ff4757, #ff6b81);
+      transition: width 0.1s linear;
+    }
+
+    .progress-status {
+      font-size: 13px;
+      color: #ffa502;
+      font-weight: 600;
+    }
+
+    .toast-msg {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: #1e222b;
+      color: #fff;
+      border: 1px solid #2ed573;
+      padding: 14px 20px;
+      border-radius: 10px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+      display: none;
+      align-items: center;
+      gap: 10px;
+      font-weight: 600;
+      font-size: 14px;
+      z-index: 2000;
+      animation: fadeIn 0.3s ease;
+    }
+
+    .toast-error {
+      border-color: #ff4757 !important;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* INSTRUÇÕES E DICAS */
+    .guide-box {
+      background: #181c24;
+      border-left: 4px solid #ff0000;
+      padding: 18px;
+      border-radius: 0 10px 10px 0;
+      font-size: 14px;
+      color: #ced6e0;
+      margin-top: 24px;
+    }
+
+    .guide-box h4 {
+      color: #fff;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+
+    .guide-box ul {
+      margin-left: 20px;
+      margin-top: 8px;
+    }
+
+    .guide-box li {
+      margin-bottom: 4px;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="header-title">
+      <h1>Estúdio de Vídeos Manga Stories (Estilo GokuShow)</h1>
+      <p>Gere vídeos completos em 1920x1080 Full HD prontos para postar no YouTube</p>
+    </div>
+    <div class="top-actions">
+      <div id="aiQueuePill" style="display:none; align-items:center; gap:6px; background:linear-gradient(135deg, #4285f4, #ea4335, #fbbc05, #34a853); padding:7px 14px; border-radius:20px; font-size:12.5px; font-weight:700; color:#fff; box-shadow:0 0 14px rgba(66,133,244,0.5);">
+        <span>⚡</span> <span id="aiQueueCount">1</span> gerando com IA...
+      </div>
+      <button class="btn-youtube" onclick="abrirModalExportarVideo()">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
+        Exportar Vídeo (1080p)
+      </button>
+      <button class="btn-secondary" onclick="salvarProjeto()" title="Salva o projeto em um arquivo exclusivo .matawa">
+        💾 Salvar Projeto (.matawa)
+      </button>
+      <button class="btn-secondary" onclick="carregarProjetoTrigger()" title="Abre um arquivo .matawa salvo anteriormente">
+        📂 Carregar Projeto
+      </button>
+      <input type="file" id="loadProjectInput" accept=".matawa" style="display:none;" onchange="processarArquivoProjeto(event)">
+      <button class="btn-success" onclick="exportarEsteiraCompleta()">Baixar Faixa PNG</button>
+      <button class="btn-secondary" onclick="adicionarNovoCardVazio()">+ Novo Card</button>
+    </div>
+  </header>
+
+  <div class="container">
+    <!-- SEÇÃO DE PREVIEW 16:9 ESTILO YOUTUBE -->
+    <div class="preview-section">
+      <div class="preview-header">
+        <h2>Pré-visualização do Vídeo <span class="badge-169">16:9 Full HD (1920x1080)</span></h2>
+        <button class="btn-youtube" style="padding: 7px 14px; font-size: 13px;" onclick="abrirModalExportarVideo()">
+          🎬 Gerar Vídeo MP4 / WebM
+        </button>
+      </div>
+
+      <div class="player-window" id="playerWindow">
+        <div class="conveyor-belt" id="conveyorBelt">
+          <!-- Cards gerados dinamicamente aqui -->
+        </div>
+      </div>
+
+      <div class="player-controls">
+        <button class="btn-primary" id="btnPlayPause" onclick="togglePlay()">Play / Pausar Animação</button>
+        <button class="btn-secondary" onclick="resetScroll()">Reiniciar Início</button>
+        <div class="slider-container">
+          <label style="font-size: 13px; color: var(--text-muted);">Posição do Scroll:</label>
+          <input type="range" id="scrollSlider" min="0" max="100" value="0" oninput="onSliderMove(this.value)">
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <label style="font-size: 13px; color: var(--text-muted);">Velocidade:</label>
+          <select id="scrollSpeed" style="background:#1e222a; color:#fff; border:1px solid #2b313d; padding:6px 10px; border-radius:6px;">
+            <option value="0.5">0.5x (Lento)</option>
+            <option value="1" selected>1.0x (Padrão)</option>
+            <option value="1.8">1.8x (Rápido)</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- SEÇÃO DE GERENCIAMENTO DOS CARDS -->
+    <div class="cards-management">
+      <div class="management-header">
+        <h2>Quadrinhos da História (${cards.length})</h2>
+        <div style="display:flex; gap:10px;">
+          <button class="btn-youtube" onclick="abrirModalExportarVideo()">🎬 Exportar Vídeo Direto</button>
+          <button class="btn-primary" onclick="adicionarNovoCardVazio()">+ Adicionar Cena</button>
+        </div>
+      </div>
+
+      <div class="cards-grid" id="cardsGrid">
+        <!-- Itens de edição dos cards -->
+      </div>
+    </div>
+
+    <!-- GUIA PRÁTICO PARA O YOUTUBE -->
+    <div class="guide-box">
+      <h4>📌 Como postar seu vídeo no YouTube:</h4>
+      <ul>
+        <li>O vídeo é gerado na resolução padrão **1920x1080 Full HD (16:9)** em 30 FPS.</li>
+        <li>O YouTube aceita o arquivo de vídeo gerado (.mp4 ou .webm) nativamente sem precisar de conversão.</li>
+        <li>Basta abrir o <a href="https://studio.youtube.com" target="_blank" style="color:#ff6b81; text-decoration:underline;">YouTube Studio</a>, clicar em **Criar > Enviar vídeos** e selecionar o arquivo baixado.</li>
+        <li>A velocidade de rolagem recomendada é de **4 a 6 segundos por card**, para dar tempo confortável ao público de ler o texto e admirar a imagem.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- MODAL DE EXPORTAÇÃO DE VÍDEO -->
+  <div class="modal-overlay" id="videoModal">
+    <div class="modal-box">
+      <h3 id="modalTitle">Exportar Vídeo para o YouTube</h3>
+      <p id="modalDesc">Escolha a velocidade de leitura e gere o arquivo de vídeo pronto em 1080p.</p>
+
+      <div id="modalConfigForm">
+        <div class="video-config-row">
+          <label>Tempo de Leitura por Card:</label>
+          <select id="videoCardDuration">
+            <option value="4">4 segundos (Ágil)</option>
+            <option value="5" selected>5 segundos (Equilibrado / Ideal)</option>
+            <option value="7">7 segundos (Leitura Calma)</option>
+            <option value="10">10 segundos (Textos Longos)</option>
+          </select>
+        </div>
+
+        <div class="video-config-row">
+          <label>Transição Oficial dos 3 Cards (Estilo GokuShow):</label>
+          <input type="checkbox" id="enableIntroTransition" checked style="width:22px; height:22px; accent-color:#ff4757; cursor:pointer;">
+        </div>
+
+        <div class="video-config-row">
+          <label>Resolução do Vídeo:</label>
+          <select id="videoResolutionSelect" style="background:#111317; border:1px solid #333a47; color:#2ed573; padding:6px 12px; border-radius:6px; font-weight:700; font-family:inherit;">
+            <option value="1080" selected>1920 x 1080 (Full HD 1080p - Alta Definição)</option>
+            <option value="720">1280 x 720 (HD 720p - Ultra Rápido e Leve)</option>
+          </select>
+        </div>
+
+        <div class="video-config-row">
+          <label>Tempo Total Estimado:</label>
+          <span id="estimatedDuration" style="font-weight:700; color:#ffa502; font-size:13px;">20 segundos</span>
+        </div>
+
+        <div style="background:rgba(46, 213, 115, 0.12); border:1px solid rgba(46, 213, 115, 0.4); border-radius:8px; padding:12px 14px; margin: 16px 0; font-size:13px; color:#2ed573; text-align:left; display:flex; align-items:flex-start; gap:10px;">
+          <span style="font-size:18px;">📱</span>
+          <span><strong>No Celular (iPhone / Android):</strong> Ao finalizar, abrirá automaticamente a tela do sistema. Basta tocar em <strong>"Salvar Vídeo"</strong> para o arquivo ir direto para a sua <strong>Galeria de Fotos</strong>!</span>
+        </div>
+
+        <div style="display:flex; gap:12px; margin-top:16px;">
+          <button class="btn-secondary" style="flex:1;" onclick="fecharModalExportarVideo()">Cancelar</button>
+          <button class="btn-youtube" style="flex:1;" onclick="iniciarGravacaoVideo()">Iniciar Renderização</button>
+        </div>
+      </div>
+
+      <!-- Barra de progresso durante a gravação -->
+      <div id="modalProgressArea" style="display:none;">
+        <div class="progress-bar-bg">
+          <div class="progress-bar-fill" id="progressBarFill"></div>
+        </div>
+        <div class="progress-status" id="progressStatusText">Preparando imagens...</div>
+        <div style="margin-top: 10px; font-size: 11.5px; color: #2ed573; font-weight: 600;" id="memoryProtectionBadge">🛡️ Proteção de Memória Ativa (Uso contínuo &lt; 30MB)</div>
+        <button class="btn-secondary" style="margin-top: 16px; width: 100%; border-color: #ff4757; color: #ff4757; font-weight: 700; padding: 10px;" onclick="cancelarGravacaoVideo()">
+          ⏹️ Cancelar Renderização
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL DE GERAÇÃO DE IMAGEM COM GOOGLE GEMINI -->
+  <div class="modal-overlay" id="aiModal">
+    <div class="modal-box" style="max-width: 600px;">
+      <h3 style="background: linear-gradient(135deg, #4285f4, #ea4335, #fbbc05, #34a853); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-size: 22px;">
+        ✨ Gerador com Google Gemini (Imagen 3)
+      </h3>
+      <p style="margin-bottom: 16px; font-size: 13.5px;">Crie ilustrações com a inteligência artificial do Google no tamanho exato da cartinha (600x680).</p>
+
+      <div id="aiFormArea">
+        <!-- Chave da API do Gemini (Opcional, salva localmente ou via .env) -->
+        <div style="background: #111317; border: 1px solid #282f3a; border-radius: 8px; padding: 12px; margin-bottom: 14px; text-align: left;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <label style="font-size: 12px; font-weight: 700; color: #ced6e0;">🔑 Chave API Google Gemini (Google AI Studio):</label>
+            <a href="https://aistudio.google.com/app/apikey" target="_blank" style="color: #2ed573; font-size: 11.5px; text-decoration: underline; font-weight: 600;">Obter Chave Grátis no Google ↗</a>
+          </div>
+          <input type="password" id="geminiApiKeyInput" placeholder="Cole sua chave aqui ou defina no arquivo .env..." style="width: 100%; background: #1c212b; border: 1px solid #3b4453; border-radius: 6px; color: #fff; padding: 8px 10px; font-size: 13px;" onchange="salvarChaveGemini(this.value)">
+          <div id="envKeyStatus" style="display:none; color:#2ed573; font-size:11.5px; font-weight:700; margin-top:6px;">✓ Chave ativa do arquivo .env</div>
+          <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">* Você pode gravar a chave no arquivo <strong>.env</strong> para ficar salva com segurança máxima no projeto.</div>
+        </div>
+
+        <div style="text-align: left; margin-bottom: 14px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <label style="font-size: 13px; font-weight: 700; color: #ced6e0;">Prompt da Cena:</label>
+            <button type="button" onclick="aprimorarPromptComLLM()" style="background: rgba(46, 213, 115, 0.15); border: 1px solid rgba(46, 213, 115, 0.4); color: #2ed573; font-size: 11.5px; font-weight: 700; padding: 4px 10px; border-radius: 6px; cursor: pointer; transition: all 0.2s;" title="Usa o Gemini 3.8 Flash para enriquecer os detalhes visuais da cena">
+              ⚡ Aprimorar com Gemini 3.8 Flash
+            </button>
+          </div>
+          <textarea id="aiPromptInput" rows="3" style="width: 100%; background: #111317; border: 1px solid #333a47; border-radius: 8px; color: #fff; padding: 12px; font-family: inherit; font-size: 14px; resize: vertical;" placeholder="Ex: Goku e Vegeta em combate épico, iluminação cinematográfica, cores vibrantes, traço moderno de alta definição..."></textarea>
+        </div>
+
+        <div style="text-align: left; margin-bottom: 20px;">
+          <label style="font-size: 12px; color: var(--text-muted); display: block; margin-bottom: 8px;">Estilos Visuais (Clique para adicionar):</label>
+          <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+            <span class="style-chip" onclick="adicionarEstiloPrompt('modern high quality anime illustration, crisp clean linework, vibrant vivid colors, cinematic lighting, sharp focus')">✨ Anime Moderno HD</span>
+            <span class="style-chip" onclick="adicionarEstiloPrompt('epic shonen action scene, dramatic dynamic camera angle, intense motion, high production value anime')">🔥 Shonen Épico</span>
+            <span class="style-chip" onclick="adicionarEstiloPrompt('radiating intense glowing energy aura with sharp electric sparks, dynamic battle stance, atmospheric particles')">⚡ Aura de Combate</span>
+            <span class="style-chip" onclick="adicionarEstiloPrompt('detailed cinematic background scenery, atmospheric depth, dramatic clouds, breathtaking sky, high budget animation')">🌌 Cenário Cinemático</span>
+            <span class="style-chip" onclick="adicionarEstiloPrompt('japanese manga black and white ink art style, detailed screentone shading, dramatic crosshatching')">📖 Mangá Detalhado P&B</span>
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 12px;">
+          <button class="btn-secondary" style="flex: 1;" onclick="fecharModalIA()">Cancelar</button>
+          <button class="btn-ai" style="flex: 1.5; padding: 12px;" onclick="executarGeracaoIA()">✨ Criar Imagem com Gemini</button>
+        </div>
+      </div>
+
+      <!-- Loading da IA -->
+      <div id="aiLoadingArea" style="display: none; padding: 24px 0;">
+        <div class="ai-spinner"></div>
+        <div style="font-size: 16px; font-weight: 700; color: #ffa502; margin-top: 18px;" id="aiLoadingTitle">✨ Criando ilustração com Google Gemini...</div>
+        <p style="font-size: 13px; color: var(--text-muted); margin-top: 6px;" id="aiLoadingSubtitle">O Gemini está gerando a imagem na proporção exata da sua cartinha (600x680).</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- CANVAS OCULTO PARA EXPORTAÇÃO DE VÍDEO E IMAGENS -->
+  <canvas id="exportCanvas" style="display:none;"></canvas>
+  <canvas id="videoRenderCanvas" width="1920" height="1080" style="display:none;"></canvas>
+
+  <script>
+    /* ========================================================
+       SISTEMA DE AUTOSAVE EM INDEXEDDB (Proteção Total Contra Perda de Dados)
+       ======================================================== */
+    const DB_NAME = 'MatawasStoriesDB';
+    const STORE_NAME = 'project_data';
+    let dbInstance = null;
+    let autoSaveTimeout = null;
+
+    function abrirBancoDados() {
+      return new Promise((resolve) => {
+        try {
+          const req = indexedDB.open(DB_NAME, 1);
+          req.onupgradeneeded = (e) => {
+            const db = e.target.result;
+            if (!db.objectStoreNames.contains(STORE_NAME)) {
+              db.createObjectStore(STORE_NAME);
+            }
+          };
+          req.onsuccess = (e) => {
+            dbInstance = e.target.result;
+            resolve(dbInstance);
+          };
+          req.onerror = () => resolve(null);
+        } catch (err) {
+          resolve(null);
+        }
+      });
+    }
+
+    async function dispararAutoSave() {
+      clearTimeout(autoSaveTimeout);
+      autoSaveTimeout = setTimeout(async () => {
+        try {
+          if (!dbInstance) await abrirBancoDados();
+          if (!dbInstance) return;
+
+          const serializableCards = cards.map(c => ({
+            id: c.id,
+            title: c.title,
+            text: c.text,
+            image: c.image
+          }));
+
+          const tx = dbInstance.transaction(STORE_NAME, 'readwrite');
+          const store = tx.objectStore(STORE_NAME);
+          store.put({
+            cards: serializableCards,
+            salvoEm: new Date().toISOString()
+          }, 'ultimo_projeto_ativo');
+        } catch (e) {
+          console.warn("Autosave falhou:", e);
+        }
+      }, 250);
+    }
+
+    async function recuperarAutoSaveSeExistir() {
+      try {
+        if (!dbInstance) await abrirBancoDados();
+        if (!dbInstance) return false;
+
+        return new Promise((resolve) => {
+          const tx = dbInstance.transaction(STORE_NAME, 'readonly');
+          const store = tx.objectStore(STORE_NAME);
+          const req = store.get('ultimo_projeto_ativo');
+          req.onsuccess = () => {
+            const data = req.result;
+            if (data && data.cards && data.cards.length > 0) {
+              cards = data.cards;
+              cards.forEach(c => { c._loadedImg = null; });
+              renderEditor();
+              renderPreview();
+              atualizarTempoEstimado();
+              mostrarToast(`🛡️ Projeto com ${cards.length} cards recuperado do AutoSave!`);
+              resolve(true);
+            } else {
+              resolve(false);
+            }
+          };
+          req.onerror = () => resolve(false);
+        });
+      } catch (err) {
+        return false;
+      }
+    }
+
+    // Estado inicial com cards de exemplo inspirados no vídeo
+    let cards = [
+      {
+        id: 1,
+        title: "Cena 1",
+        image: null,
+        text: "Daichi treina sem parar para superar todos os limites de seu poder."
+      },
+      {
+        id: 2,
+        title: "Cena 2",
+        image: null,
+        text: "Lembrando do planeta Vegeta, ele decide se preparar para a maior batalha."
+      },
+      {
+        id: 3,
+        title: "Cena 3",
+        image: null,
+        text: "No torneio de artes marciais, a velocidade dos gêmeos surpreendeu a todos."
+      },
+      {
+        id: 4,
+        title: "Cena 4",
+        image: null,
+        text: "Unidos, nenhum inimigo do universo seria capaz de deter a nova lenda."
+      }
+    ];
+
+    let isPlaying = false;
+    let scrollPos = 0;
+    let animationId = null;
+    let currentCardIdForAi = null;
+
+    function renderEditor() {
+      const grid = document.getElementById('cardsGrid');
+      grid.innerHTML = '';
+
+      cards.forEach((card, index) => {
+        const item = document.createElement('div');
+        item.className = 'card-editor-item';
+        item.innerHTML = `
+          <div class="card-editor-header">
+            <h3>Card #${index + 1} - ${card.title}</h3>
+            ${cards.length > 1 ? `<button class="btn-delete" onclick="removerCard(${card.id})">Excluir</button>` : ''}
+          </div>
+
+          <div class="card-editor-body">
+            <!-- VISUALIZAÇÃO DA CARTINHA REALISTA -->
+            <div class="mini-card-preview" id="mini-card-${card.id}" title="Prévia da sua Cartinha">
+              <div class="mini-card-img-slot">
+                ${card._gerandoIA 
+                  ? `<div class="ai-inline-loading"><div class="mini-spinner"></div><span>✨ Criando com IA...</span></div>`
+                  : (card.image 
+                      ? `<img src="${card.image}" alt="Cena ${index + 1}">` 
+                      : `<div style="color:#747d8c; font-size:11px; text-align:center; padding:10px; font-weight:700;">Sem Imagem<br><span style="font-size:9.5px; opacity:0.7;">(IA ou Arquivo)</span></div>`
+                    )
+                }
+              </div>
+              <div class="mini-card-txt-slot">
+                <p id="mini-txt-${card.id}">${formatarTexto(card.text)}</p>
+              </div>
+            </div>
+
+            <!-- CONTROLES E AÇÕES DO CARD -->
+            <div class="card-editor-controls">
+              <div style="display:flex; gap:8px;">
+                ${card._gerandoIA 
+                  ? `<button class="btn-ai" style="flex:1.2; opacity:0.75; cursor:wait;" disabled>
+                       <span class="mini-spinner" style="width:12px; height:12px; border-width:2px; display:inline-block; vertical-align:middle; margin-right:4px;"></span> Gerando...
+                     </button>`
+                  : `<button class="btn-ai" style="flex:1.2;" onclick="abrirModalIA(${card.id})">
+                       ✨ Gerar com IA
+                     </button>`
+                }
+                <button class="btn-secondary" style="flex:1;" onclick="acionarUploadArquivo(${card.id})" ${card._gerandoIA ? 'disabled' : ''}>
+                  📁 Arquivo
+                </button>
+                <input type="file" id="file-input-${card.id}" accept="image/*" style="display:none;" onchange="carregarImagem(${card.id}, event)">
+              </div>
+
+              <div class="textarea-wrapper">
+                <label style="font-size:12px; color:var(--text-muted); margin-bottom:4px; display:block;">Texto da História (Embaixo):</label>
+                <textarea placeholder="Digite o texto da história..." oninput="atualizarTexto(${card.id}, this.value)">${card.text}</textarea>
+              </div>
+
+              <div class="card-actions">
+                <button class="btn-secondary" style="flex:1; font-size:12.5px; padding:8px 12px;" onclick="baixarCardIndividual(${card.id})">Baixar Este Card PNG</button>
+              </div>
+            </div>
+          </div>
+        `;
+        grid.appendChild(item);
+      });
+
+      atualizarTempoEstimado();
+      renderPreview();
+    }
+
+    function acionarUploadArquivo(id) {
+      const input = document.getElementById(`file-input-${id}`);
+      if (input) input.click();
+    }
+
+    /* CONTROLE DO MODAL DE IA COM GOOGLE GEMINI */
+    let serverEnvConfig = { apiKey: '', imageModel: 'gemini-3.1-flash-image', llmModel: 'gemini-3.8-flash', hasApiKey: false };
+
+    async function carregarConfiguracoesServidor() {
+      try {
+        const resp = await fetch('/api/config');
+        if (resp.ok) {
+          const cfg = await resp.json();
+          serverEnvConfig = cfg;
+          if (cfg.hasApiKey && cfg.apiKey) {
+            const keyInput = document.getElementById('geminiApiKeyInput');
+            if (keyInput) keyInput.value = cfg.apiKey;
+            const badge = document.getElementById('envKeyStatus');
+            if (badge) {
+              badge.style.display = 'block';
+              badge.innerText = `✓ Chave e modelos ativos via .env (LLM: ${cfg.llmModel} | Imagem: ${cfg.imageModel})`;
+            }
+          }
+        }
+      } catch (e) {
+        // Modo offline / arquivo local
+      }
+    }
+
+    function salvarChaveGemini(val) {
+      if (val) {
+        localStorage.setItem('matawas_gemini_api_key', val.trim());
+        mostrarToast("🔑 Chave do Google Gemini salva com sucesso!");
+      } else {
+        localStorage.removeItem('matawas_gemini_api_key');
+      }
+    }
+
+    function abrirModalIA(id) {
+      currentCardIdForAi = id;
+      const card = cards.find(c => c.id === id);
+      const promptInput = document.getElementById('aiPromptInput');
+      const keyInput = document.getElementById('geminiApiKeyInput');
+
+      // Prioriza a chave do .env se existir, senão recupera do localStorage
+      const activeKey = serverEnvConfig.apiKey || localStorage.getItem('matawas_gemini_api_key') || '';
+      if (keyInput && activeKey) {
+        keyInput.value = activeKey;
+      }
+
+      if (card && card.text) {
+        promptInput.value = card.text;
+      } else {
+        promptInput.value = '';
+      }
+      document.getElementById('aiFormArea').style.display = 'block';
+      document.getElementById('aiLoadingArea').style.display = 'none';
+      document.getElementById('aiModal').style.display = 'flex';
+      setTimeout(() => promptInput.focus(), 100);
+    }
+
+    function fecharModalIA() {
+      document.getElementById('aiModal').style.display = 'none';
+      currentCardIdForAi = null;
+    }
+
+    function adicionarEstiloPrompt(estilo) {
+      const input = document.getElementById('aiPromptInput');
+      if (input.value.trim().length > 0) {
+        input.value += `, ${estilo}`;
+      } else {
+        input.value = estilo;
+      }
+      input.focus();
+    }
+
+    async function aprimorarPromptComLLM() {
+      const promptInput = document.getElementById('aiPromptInput');
+      const originalText = promptInput.value.trim();
+      if (!originalText) {
+        mostrarToast("Digite algo no prompt primeiro para o Gemini aprimorar.", true);
+        return;
+      }
+
+      const geminiKey = (document.getElementById('geminiApiKeyInput')?.value || localStorage.getItem('matawas_gemini_api_key') || '').trim();
+      if (!geminiKey) {
+        mostrarToast("Chave da API do Gemini necessária para aprimorar o prompt.", true);
+        return;
+      }
+
+      const llmModel = serverEnvConfig.llmModel || 'gemini-3.8-flash';
+      mostrarToast(`⚡ Aprimorando cena com ${llmModel}...`);
+
+      try {
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${llmModel}:generateContent?key=${geminiKey}`;
+        const instruction = "Você é um especialista em direção de arte e storyboard para animes modernos de alto impacto (estilo Ufotable, MAPPA, Toei moderno). Reescreva e enriqueça a descrição da cena a seguir em inglês, transformando-a em um prompt visual rico, com ângulos de câmera cinematográficos, iluminação volumétrica, composição dinâmica e traço moderno nítido. NÃO use referências vintage ou anos 90. Retorne ESTRITAMENTE o prompt enriquecido em inglês, sem aspas e sem nenhuma explicação extra.";
+
+        const resp = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [
+              {
+                role: "user",
+                parts: [
+                  { text: `${instruction}\n\nCena original: ${originalText}` }
+                ]
+              }
+            ]
+          })
+        });
+
+        const data = await resp.json();
+        const enhancedText = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+        if (enhancedText) {
+          promptInput.value = enhancedText;
+          mostrarToast(`✨ Prompt enriquecido pelo ${llmModel}!`);
+        } else if (data.error) {
+          mostrarToast(`Erro ao aprimorar: ${data.error.message}`, true);
+        }
+      } catch (err) {
+        console.warn("Erro ao chamar LLM:", err);
+        mostrarToast("Falha ao conectar com o modelo LLM.", true);
+      }
+    }
+
+    let tarefasIAAtivas = 0;
+
+    function atualizarContadorFilaIA(delta) {
+      tarefasIAAtivas = Math.max(0, tarefasIAAtivas + delta);
+      const pill = document.getElementById('aiQueuePill');
+      const countEl = document.getElementById('aiQueueCount');
+      if (pill && countEl) {
+        if (tarefasIAAtivas > 0) {
+          pill.style.display = 'inline-flex';
+          countEl.innerText = tarefasIAAtivas;
+        } else {
+          pill.style.display = 'none';
+        }
+      }
+    }
+
+    async function executarGeracaoIA() {
+      const prompt = document.getElementById('aiPromptInput').value.trim();
+      if (!prompt) {
+        mostrarToast("Digite um prompt para a IA gerar a ilustração.", true);
+        return;
+      }
+
+      const targetCardId = currentCardIdForAi;
+      const targetCard = cards.find(c => c.id === targetCardId);
+      if (!targetCard) {
+        fecharModalIA();
+        return;
+      }
+
+      const geminiKey = (document.getElementById('geminiApiKeyInput')?.value || localStorage.getItem('matawas_gemini_api_key') || '').trim();
+      if (geminiKey) {
+        localStorage.setItem('matawas_gemini_api_key', geminiKey);
+      }
+
+      // 1. Marca este card específico como em processamento
+      targetCard._gerandoIA = true;
+
+      // 2. Fecha o modal IMEDIATAMENTE (como no Google Flow) para você continuar criando
+      fecharModalIA();
+      renderEditor();
+      renderPreview();
+      atualizarContadorFilaIA(1);
+      mostrarToast(`⚡ Criando ilustração para ${targetCard.title} em segundo plano...`);
+
+      // 3. Dispara a criação assíncrona em paralelo
+      iniciarProcessamentoIAEmSegundoPlano(targetCardId, prompt, geminiKey);
+    }
+
+    async function iniciarProcessamentoIAEmSegundoPlano(cardId, prompt, geminiKey) {
+      // FÓRMULA OFICIAL DE PROMPT DO GEMINI PARA ANIME MODERNO DE ALTA DEFINIÇÃO
+      const formulaPrompt = `High quality modern anime illustration, crisp lines, vibrant vivid colors, cinematic lighting, dynamic atmosphere, sharp focus, detailed digital anime artwork: ${prompt}, masterpiece, 8k resolution, clean composition`;
+
+      let base64Data = null;
+
+      // 1. TENTATIVA COM A API OFICIAL DO GOOGLE GEMINI
+      if (geminiKey) {
+        try {
+          let modelName = serverEnvConfig.imageModel || 'gemini-3.1-flash-image';
+          if (modelName === 'gemini-3.8-flash' || modelName.includes('nano-banana')) {
+            modelName = 'gemini-3.1-flash-image';
+          }
+
+          if (modelName.startsWith('imagen-')) {
+            const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:predict?key=${geminiKey}`;
+            const response = await fetch(geminiUrl, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                instances: [{ prompt: formulaPrompt }],
+                parameters: { sampleCount: 1, aspectRatio: "3:4", personGeneration: "ALLOW_ADULT" }
+              })
+            });
+            const data = await response.json();
+            if (data.predictions && data.predictions.length > 0 && data.predictions[0].bytesBase64Encoded) {
+              const mime = data.predictions[0].mimeType || 'image/jpeg';
+              base64Data = `data:${mime};base64,${data.predictions[0].bytesBase64Encoded}`;
+            }
+          } else {
+            const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${geminiKey}`;
+            const response = await fetch(geminiUrl, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                contents: [{ parts: [{ text: formulaPrompt }] }],
+                generationConfig: { responseModalities: ["image", "text"] }
+              })
+            });
+            const data = await response.json();
+            const parts = data.candidates?.[0]?.content?.parts || [];
+            const imgPart = parts.find(p => p.inlineData && p.inlineData.data);
+            if (imgPart) {
+              const mime = imgPart.inlineData.mimeType || 'image/png';
+              base64Data = `data:${mime};base64,${imgPart.inlineData.data}`;
+            }
+          }
+        } catch (err) {
+          console.warn(`Falha na API Gemini para Card #${cardId}, tentando contingência:`, err);
+        }
+      }
+
+      // 2. MOTOR DE CONTINGÊNCIA SE O GEMINI FALHAR OU ESTIVER SEM CHAVE
+      if (!base64Data) {
+        try {
+          const seed = Math.floor(Math.random() * 9999999);
+          const encodedPrompt = encodeURIComponent(formulaPrompt);
+          const imageUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=600&height=680&nologo=true&seed=${seed}`;
+
+          base64Data = await new Promise((resolve, reject) => {
+            const img = new Image();
+            img.crossOrigin = "anonymous";
+            img.onload = () => {
+              const c = document.createElement('canvas');
+              c.width = 600;
+              c.height = 680;
+              const ctx = c.getContext('2d');
+              ctx.drawImage(img, 0, 0, 600, 680);
+              resolve(c.toDataURL('image/jpeg', 0.92));
+            };
+            img.onerror = () => reject(new Error("Falha ao carregar"));
+            img.src = imageUrl;
+          });
+        } catch (pollErr) {
+          console.warn(`Falha no motor de contingência para Card #${cardId}:`, pollErr);
+        }
+      }
+
+      // 3. FINALIZAÇÃO DA TAREFA ESPECÍFICA DESTE CARD
+      atualizarContadorFilaIA(-1);
+      const card = cards.find(c => c.id === cardId);
+      if (card) {
+        card._gerandoIA = false;
+        if (base64Data) {
+          card.image = base64Data;
+          card._loadedImg = null;
+          renderEditor();
+          renderPreview();
+          dispararAutoSave();
+          mostrarToast(`✓ Ilustração do ${card.title} finalizada com sucesso!`);
+        } else {
+          renderEditor();
+          renderPreview();
+          mostrarToast(`Erro ao gerar ilustração para o ${card.title}. Tente novamente.`, true);
+        }
+      }
+    }
+
+    function renderPreview() {
+      const conveyor = document.getElementById('conveyorBelt');
+      conveyor.innerHTML = '';
+
+      cards.forEach((card, index) => {
+        const cardEl = document.createElement('div');
+        cardEl.className = 'comic-card';
+        cardEl.innerHTML = `
+          <div class="comic-image-slot">
+            ${card._gerandoIA 
+              ? `<div class="ai-inline-loading" style="font-size:14px;"><div class="mini-spinner" style="width:36px; height:36px;"></div><span style="font-size:13px;">✨ Criando com IA...</span></div>`
+              : (card.image 
+                  ? `<img src="${card.image}" alt="Cena ${index + 1}">` 
+                  : `<div class="comic-image-placeholder">Imagem da Cena #${index + 1}<br><span style="font-size:11px; opacity:0.7;">(Upload no painel abaixo)</span></div>`
+                )
+            }
+          </div>
+          <div class="comic-text-slot">
+            <p>${formatarTexto(card.text)}</p>
+          </div>
+        `;
+        conveyor.appendChild(cardEl);
+      });
+    }
+
+    function formatarTexto(str) {
+      if (!str) return 'Digite o texto...';
+      return str.replace(/\n/g, '<br>');
+    }
+
+    function carregarImagem(id, event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const card = cards.find(c => c.id === id);
+        if (card) {
+          card.image = e.target.result;
+          card._loadedImg = null;
+          renderEditor();
+          dispararAutoSave();
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function atualizarTexto(id, texto) {
+      const card = cards.find(c => c.id === id);
+      if (card) {
+        card.text = texto;
+        // Atualiza na hora o texto da mini cartinha realista
+        const miniTxt = document.getElementById(`mini-txt-${id}`);
+        if (miniTxt) miniTxt.innerHTML = formatarTexto(texto);
+        renderPreview();
+        dispararAutoSave();
+      }
+    }
+
+    function adicionarNovoCardVazio() {
+      const novoId = Date.now();
+      cards.push({
+        id: novoId,
+        title: `Cena ${cards.length + 1}`,
+        image: null,
+        text: "Novo acontecimento emocionante da história..."
+      });
+      renderEditor();
+      dispararAutoSave();
+    }
+
+    function removerCard(id) {
+      cards = cards.filter(c => c.id !== id);
+      renderEditor();
+      dispararAutoSave();
+    }
+
+    /* CONTROLES DA ANIMAÇÃO DE SCROLL */
+    function togglePlay() {
+      isPlaying = !isPlaying;
+      document.getElementById('btnPlayPause').innerText = isPlaying ? 'Pausar Animação' : 'Play Animação';
+      if (isPlaying) {
+        animar();
+      } else {
+        cancelAnimationFrame(animationId);
+      }
+    }
+
+    function animar() {
+      if (!isPlaying) return;
+      const speed = parseFloat(document.getElementById('scrollSpeed').value) || 1;
+      scrollPos += speed * 0.8;
+
+      const conveyor = document.getElementById('conveyorBelt');
+      const player = document.getElementById('playerWindow');
+      const maxScroll = Math.max(0, conveyor.scrollWidth - player.clientWidth);
+
+      if (maxScroll > 0) {
+        if (scrollPos > maxScroll) {
+          scrollPos = 0; // loop
+        }
+        conveyor.style.transform = `translateX(-${scrollPos}px)`;
+        document.getElementById('scrollSlider').value = (scrollPos / maxScroll) * 100;
+      }
+
+      animationId = requestAnimationFrame(animar);
+    }
+
+    function resetScroll() {
+      scrollPos = 0;
+      document.getElementById('conveyorBelt').style.transform = `translateX(0px)`;
+      document.getElementById('scrollSlider').value = 0;
+    }
+
+    function onSliderMove(val) {
+      const conveyor = document.getElementById('conveyorBelt');
+      const player = document.getElementById('playerWindow');
+      const maxScroll = Math.max(0, conveyor.scrollWidth - player.clientWidth);
+      scrollPos = (val / 100) * maxScroll;
+      conveyor.style.transform = `translateX(-${scrollPos}px)`;
+    }
+
+    /* ========================================================
+       DESENHO MODULAR DOS COMPONENTES DO CARD NO CANVAS
+       ======================================================== */
+    function desenharSlotTexto(ctx, card, x, y, w, h, alpha = 1) {
+      if (!card || alpha <= 0) return;
+      ctx.save();
+      ctx.globalAlpha = Math.min(1, Math.max(0, alpha));
+
+      const imgH = h * 0.66;
+      const txtY = y + imgH;
+      const txtH = h - imgH;
+
+      // Caixa de texto inferior (preto estilizado com contorno sutil)
+      ctx.fillStyle = '#0d0e11';
+      ctx.fillRect(x + 2, txtY + 2, w - 4, txtH - 4);
+      ctx.strokeStyle = '#262c37';
+      ctx.lineWidth = 4;
+      ctx.strokeRect(x + 2, txtY + 2, w - 4, txtH - 4);
+
+      // Renderizar texto
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 30px Montserrat, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+
+      const palavras = (card.text || '').split(' ');
+      let linhas = [];
+      let linhaAtual = '';
+      const maxW = w - 60;
+
+      palavras.forEach(p => {
+        const teste = linhaAtual ? linhaAtual + ' ' + p : p;
+        if (ctx.measureText(teste).width > maxW) {
+          linhas.push(linhaAtual);
+          linhaAtual = p;
+        } else {
+          linhaAtual = teste;
+        }
+      });
+      if (linhaAtual) linhas.push(linhaAtual);
+
+      const totalTextH = linhas.length * 40;
+      let startY = txtY + (txtH / 2) - (totalTextH / 2) + 20;
+
+      linhas.forEach(linha => {
+        ctx.fillText(linha, x + (w / 2), startY);
+        startY += 40;
+      });
+
+      ctx.restore();
+    }
+
+    function desenharSlotImagem(ctx, card, x, y, w, h, alpha = 1, scale = 1) {
+      if (!card || alpha <= 0) return;
+      ctx.save();
+      ctx.globalAlpha = Math.min(1, Math.max(0, alpha));
+
+      const imgH = h * 0.66;
+
+      // Borda e fundo do card
+      ctx.fillStyle = '#16181d';
+      ctx.strokeStyle = '#2e3542';
+      ctx.lineWidth = 4;
+      ctx.fillRect(x, y, w, imgH);
+      ctx.strokeRect(x, y, w, imgH);
+
+      if (card._loadedImg) {
+        const img = card._loadedImg;
+        const s = Math.max(w / img.width, imgH / img.height) * scale;
+        const sw = w / s;
+        const sh = imgH / s;
+        const sx = (img.width - sw) / 2;
+        const sy = (img.height - sh) / 2;
+
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(x + 2, y + 2, w - 4, imgH - 4);
+        ctx.clip();
+        ctx.drawImage(img, sx, sy, sw, sh, x + 2, y + 2, w - 4, imgH - 4);
+        ctx.restore();
+      } else {
+        ctx.fillStyle = '#1f242e';
+        ctx.fillRect(x + 2, y + 2, w - 4, imgH - 4);
+        ctx.fillStyle = '#747d8c';
+        ctx.font = '22px Montserrat, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(`Imagem #${card.title}`, x + (w / 2), y + (imgH / 2));
+      }
+
+      ctx.restore();
+    }
+
+    /* DESENHO COMPLETO DO CARD (USADO NA FAIXA PANORÂMICA) */
+    function desenharCardNoCanvas(ctx, card, x, y, w, h) {
+      return new Promise((resolve) => {
+        // Pré-carrega se necessário
+        if (card.image && !card._loadedImg) {
+          const img = new Image();
+          img.onload = () => {
+            card._loadedImg = img;
+            desenharSlotImagem(ctx, card, x, y, w, h, 1, 1);
+            desenharSlotTexto(ctx, card, x, y, w, h, 1);
+            resolve();
+          };
+          img.onerror = () => {
+            desenharSlotImagem(ctx, card, x, y, w, h, 1, 1);
+            desenharSlotTexto(ctx, card, x, y, w, h, 1);
+            resolve();
+          };
+          img.src = card.image;
+        } else {
+          desenharSlotImagem(ctx, card, x, y, w, h, 1, 1);
+          desenharSlotTexto(ctx, card, x, y, w, h, 1);
+          resolve();
+        }
+      });
+    }
+
+    /* RENDERIZAÇÃO DA TRANSIÇÃO DOS 3 PRIMEIROS CARDS (ESTILO OFICIAL GOKUSHOW) */
+    function renderizarQuadroIntro(outCtx, cards, tempoAtual) {
+      // Fundo cinematográfico característico da transição oficial
+      outCtx.fillStyle = '#5c616c';
+      outCtx.fillRect(0, 0, 1920, 1080);
+
+      const slots = [
+        { x: 25, y: 20, w: 620, h: 1040, txtT: 0.2, imgT: 1.8 },
+        { x: 670, y: 20, w: 620, h: 1040, txtT: 2.5, imgT: 3.9 },
+        { x: 1315, y: 20, w: 620, h: 1040, txtT: 4.6, imgT: 6.0 }
+      ];
+
+      for (let i = 0; i < slots.length; i++) {
+        if (!cards[i]) continue;
+        const slot = slots[i];
+
+        // 1. Texto da cena aparece primeiro
+        if (tempoAtual >= slot.txtT) {
+          const alphaTxt = Math.min(1, (tempoAtual - slot.txtT) / 0.35);
+          desenharSlotTexto(outCtx, cards[i], slot.x, slot.y, slot.w, slot.h, alphaTxt);
+        }
+
+        // 2. Imagem surge logo em seguida
+        if (tempoAtual >= slot.imgT) {
+          const progressImg = Math.min(1, (tempoAtual - slot.imgT) / 0.3);
+          const alphaImg = progressImg;
+          // Efeito sutil de pop in (scale 0.96 até 1.0)
+          const scaleImg = 0.96 + (0.04 * progressImg);
+          desenharSlotImagem(outCtx, cards[i], slot.x, slot.y, slot.w, slot.h, alphaImg, scaleImg);
+        }
+      }
+    }
+
+    /* PRÉ-CARREGAMENTO SINCRONIZADO DE IMAGENS (Evita travamentos e gargalos de GPU) */
+    async function precarregarTodasImagens() {
+      const promises = cards.map(c => {
+        if (c.image && !c._loadedImg) {
+          return new Promise(res => {
+            const img = new Image();
+            img.onload = () => { c._loadedImg = img; res(); };
+            img.onerror = () => { res(); };
+            img.src = c.image;
+          });
+        }
+        return Promise.resolve();
+      });
+      await Promise.all(promises);
+    }
+
+    /* RENDERIZAÇÃO VIRTUALIZADA EM TEMPO REAL DA ESTEIRA (Zero consumo de VRAM, suporta centenas de cards) */
+    function desenharQuadroEsteira(outCtx, cards, currentScrollX) {
+      outCtx.fillStyle = '#0f1013';
+      outCtx.fillRect(0, 0, 1920, 1080);
+
+      const cardW = 620;
+      const cardH = 1040;
+      const gap = 25;
+      const margin = 20;
+      const step = cardW + gap; // 645px
+
+      // Determinar faixa de índices visíveis no viewport [0, 1920]
+      const minX = currentScrollX - cardW;
+      const maxX = currentScrollX + 1920;
+
+      const firstIndex = Math.max(0, Math.floor((minX - margin) / step));
+      const lastIndex = Math.min(cards.length - 1, Math.ceil((maxX - margin) / step));
+
+      for (let i = firstIndex; i <= lastIndex; i++) {
+        const cardX = (margin + i * step) - currentScrollX;
+        if (cardX + cardW >= -10 && cardX <= 1930) {
+          desenharSlotImagem(outCtx, cards[i], cardX, 20, cardW, cardH, 1, 1);
+          desenharSlotTexto(outCtx, cards[i], cardX, 20, cardW, cardH, 1);
+        }
+      }
+    }
+
+    async function baixarCardIndividual(id) {
+      const card = cards.find(c => c.id === id);
+      if (!card) return;
+
+      const canvas = document.getElementById('exportCanvas');
+      canvas.width = 620;
+      canvas.height = 1040;
+      const ctx = canvas.getContext('2d');
+
+      await desenharCardNoCanvas(ctx, card, 0, 0, 620, 1040);
+
+      const link = document.createElement('a');
+      link.download = `card_${id}.png`;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    }
+
+    async function exportarEsteiraCompleta() {
+      const cardW = 620;
+      const cardH = 1040;
+      const gap = 25;
+      const margin = 20;
+
+      const totalW = (cards.length * cardW) + ((cards.length - 1) * gap) + (margin * 2);
+      const totalH = 1080;
+
+      const canvas = document.getElementById('exportCanvas');
+      canvas.width = totalW;
+      canvas.height = totalH;
+      const ctx = canvas.getContext('2d');
+
+      ctx.fillStyle = '#121418';
+      ctx.fillRect(0, 0, totalW, totalH);
+
+      let currentX = margin;
+      for (const card of cards) {
+        await desenharCardNoCanvas(ctx, card, currentX, 20, cardW, cardH);
+        currentX += cardW + gap;
+      }
+
+      const link = document.createElement('a');
+      link.download = `esteira_video_completa_${cards.length}_cards.png`;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    }
+
+    /* ========================================================
+       GERADOR DE VÍDEO COMPLETO PARA O YOUTUBE (1920x1080)
+       COM TAXA DE QUADROS DETERMINÍSTICA E SEM GARGALO DE MEMÓRIA
+       ======================================================== */
+    function atualizarTempoEstimado() {
+      const durPorCard = parseInt(document.getElementById('videoCardDuration')?.value || 5);
+      const totalSegundos = cards.length * durPorCard;
+      const el = document.getElementById('estimatedDuration');
+      if (el) el.innerText = `${totalSegundos} segundos (${cards.length} cards x ${durPorCard}s)`;
+    }
+
+    document.getElementById('videoCardDuration')?.addEventListener('change', atualizarTempoEstimado);
+
+    function abrirModalExportarVideo() {
+      atualizarTempoEstimado();
+      document.getElementById('modalTitle').innerText = 'Exportar Vídeo para o YouTube';
+      document.getElementById('modalDesc').innerText = 'Gere o arquivo de vídeo pronto em 1080p Full HD com velocidade 100% constante.';
+      document.getElementById('modalConfigForm').style.display = 'block';
+      document.getElementById('modalProgressArea').style.display = 'none';
+      document.getElementById('videoModal').style.display = 'flex';
+    }
+
+    function fecharModalExportarVideo() {
+      document.getElementById('videoModal').style.display = 'none';
+    }
+
+    let gravacaoCancelada = false;
+
+    function cancelarGravacaoVideo() {
+      gravacaoCancelada = true;
+      const statusText = document.getElementById('progressStatusText');
+      if (statusText) statusText.innerText = "⏹️ Cancelando e liberando memória...";
+      mostrarToast("Renderização cancelada.");
+    }
+
+    async function iniciarGravacaoVideo() {
+      gravacaoCancelada = false;
+      document.getElementById('modalConfigForm').style.display = 'none';
+      document.getElementById('modalProgressArea').style.display = 'block';
+
+      const progressFill = document.getElementById('progressBarFill');
+      const statusText = document.getElementById('progressStatusText');
+
+      // 1. Manter tela ativa (Wake Lock no celular/desktop para evitar suspensão)
+      let wakeLock = null;
+      if ('wakeLock' in navigator) {
+        try { wakeLock = await navigator.wakeLock.request('screen'); } catch (e) {}
+      }
+
+      statusText.innerText = "1/3: Otimizando e pré-carregando imagens dos cards...";
+      progressFill.style.width = "10%";
+      await precarregarTodasImagens();
+
+      if (gravacaoCancelada) {
+        fecharModalExportarVideo();
+        return;
+      }
+
+      // 2. Parâmetros da timeline matemática e resolução
+      const resSelect = document.getElementById('videoResolutionSelect')?.value || '1080';
+      const targetW = resSelect === '720' ? 1280 : 1920;
+      const targetH = resSelect === '720' ? 720 : 1080;
+      const scaleRatio = targetW / 1920;
+      const targetBitrate = targetW === 1920 ? 6000000 : 3500000;
+
+      const cardW = 620;
+      const cardH = 1040;
+      const gap = 25;
+      const margin = 20;
+
+      const durPorCard = parseFloat(document.getElementById('videoCardDuration').value) || 5;
+      const enableIntro = document.getElementById('enableIntroTransition')?.checked !== false;
+
+      const introDur = enableIntro ? 7.5 : 0; // segundos de transição inicial
+      const scrollDur = enableIntro 
+        ? Math.max(4, (cards.length - 1) * durPorCard) 
+        : (cards.length * durPorCard);
+      const duracaoTotal = introDur + scrollDur;
+
+      const totalFaixaW = (cards.length * cardW) + ((cards.length - 1) * gap) + (margin * 2);
+      const maxDeslocamento = Math.max(0, totalFaixaW - 1920);
+
+      const fps = 30;
+      const totalFrames = Math.round(duracaoTotal * fps);
+
+      const outCanvas = document.getElementById('videoRenderCanvas');
+      outCanvas.width = targetW;
+      outCanvas.height = targetH;
+      const outCtx = outCanvas.getContext('2d', { alpha: false });
+
+      // Função de renderização com escala automática
+      function renderizarFrameInstante(tempo) {
+        outCtx.save();
+        if (scaleRatio !== 1) {
+          outCtx.scale(scaleRatio, scaleRatio);
+        }
+
+        if (enableIntro && tempo < introDur) {
+          renderizarQuadroIntro(outCtx, cards, tempo);
+        } else {
+          const tempoScroll = enableIntro ? (tempo - introDur) : tempo;
+          const progressoScroll = Math.min(1, Math.max(0, tempoScroll / scrollDur));
+          const currentScrollX = progressoScroll * maxDeslocamento;
+          desenharQuadroEsteira(outCtx, cards, currentScrollX);
+        }
+
+        outCtx.restore();
+      }
+
+      let videoBlob = null;
+      let extensao = 'mp4';
+      let mimeType = 'video/mp4';
+
+      // 3. TENTATIVA COM WEBCODECS + MP4-MUXER (Com Backpressure e Limite Estrito de Memória < 30MB)
+      let usouWebCodecs = false;
+      const suportaWebCodecs = typeof window.VideoEncoder === 'function' && typeof window.Mp4Muxer !== 'undefined';
+
+      if (suportaWebCodecs) {
+        try {
+          const codecsCandidatos = ['avc1.42001f', 'avc1.42E01E', 'avc1.4d002a', 'avc1.640028'];
+          let codecValido = null;
+          for (const c of codecsCandidatos) {
+            const check = await VideoEncoder.isConfigSupported({
+              codec: c,
+              width: targetW,
+              height: targetH,
+              bitrate: targetBitrate,
+              framerate: fps
+            });
+            if (check && check.supported) {
+              codecValido = c;
+              break;
+            }
+          }
+
+          if (codecValido) {
+            statusText.innerText = `2/3: Inicializando codificador MP4 (${targetW}x${targetH})...`;
+            progressFill.style.width = "15%";
+
+            const muxer = new Mp4Muxer.Muxer({
+              target: new Mp4Muxer.ArrayBufferTarget(),
+              video: {
+                codec: 'avc',
+                width: targetW,
+                height: targetH
+              },
+              fastStart: 'in-memory'
+            });
+
+            const encoder = new VideoEncoder({
+              output: (chunk, meta) => muxer.addVideoChunk(chunk, meta),
+              error: (err) => console.error("Erro VideoEncoder:", err)
+            });
+
+            await encoder.configure({
+              codec: codecValido,
+              width: targetW,
+              height: targetH,
+              bitrate: targetBitrate,
+              framerate: fps
+            });
+
+            const frameDurationMicros = Math.round(1_000_000 / fps);
+
+            for (let frame = 0; frame <= totalFrames; frame++) {
+              if (gravacaoCancelada) {
+                encoder.close();
+                fecharModalExportarVideo();
+                return;
+              }
+
+              // CONTROLE DE BACKPRESSURE: Se a fila tiver >= 2 quadros, aguarda esvaziar
+              // Isso garante que NUNCA acumula quadros na memória RAM/VRAM!
+              while (encoder.encodeQueueSize >= 2) {
+                if (gravacaoCancelada) break;
+                await new Promise(r => setTimeout(r, 12));
+              }
+
+              if (gravacaoCancelada) {
+                encoder.close();
+                fecharModalExportarVideo();
+                return;
+              }
+
+              const tempoAtual = frame / fps;
+              renderizarFrameInstante(tempoAtual);
+
+              const videoFrame = new VideoFrame(outCanvas, {
+                timestamp: frame * frameDurationMicros,
+                duration: frameDurationMicros
+              });
+
+              encoder.encode(videoFrame, { keyFrame: (frame % (fps * 2) === 0) });
+              videoFrame.close();
+
+              // Cede a vez ao navegador a cada 2 quadros para tela e mouse responderem 100% livres
+              if (frame % 2 === 0 || frame === totalFrames) {
+                const pct = Math.round(15 + ((frame / totalFrames) * 80));
+                progressFill.style.width = `${pct}%`;
+                statusText.innerText = `Renderizando: ${Math.round((frame/totalFrames)*100)}% (${(frame/fps).toFixed(1)}s / ${duracaoTotal.toFixed(1)}s)`;
+                await new Promise(r => requestAnimationFrame(r));
+              }
+            }
+
+            statusText.innerText = "Finalizando empacotamento MP4...";
+            await encoder.flush();
+            muxer.finalize();
+
+            videoBlob = new Blob([muxer.target.buffer], { type: 'video/mp4' });
+            extensao = 'mp4';
+            mimeType = 'video/mp4';
+            usouWebCodecs = true;
+          }
+        } catch (webCodecsErr) {
+          console.warn("WebCodecs falhou, aplicando fallback:", webCodecsErr);
+        }
+      }
+
+      // 4. FALLBACK SEGURO VIA MEDIARECORDER COM CONTROLE DE CANCELAMENTO
+      if (!usouWebCodecs && !gravacaoCancelada) {
+        statusText.innerText = "2/3: Configurando gravador...";
+        progressFill.style.width = "25%";
+
+        mimeType = 'video/mp4; codecs="avc1.42E01E"';
+        extensao = 'mp4';
+        if (!MediaRecorder.isTypeSupported(mimeType)) {
+          mimeType = 'video/mp4';
+          if (!MediaRecorder.isTypeSupported(mimeType)) {
+            mimeType = 'video/webm; codecs=vp9';
+            extensao = 'webm';
+            if (!MediaRecorder.isTypeSupported(mimeType)) {
+              mimeType = 'video/webm';
+              extensao = 'webm';
+            }
+          }
+        }
+
+        const stream = outCanvas.captureStream(fps);
+        const recorder = new MediaRecorder(stream, {
+          mimeType: mimeType,
+          videoBitsPerSecond: targetBitrate
+        });
+
+        const chunks = [];
+        recorder.ondataavailable = (e) => {
+          if (e.data.size > 0) chunks.push(e.data);
+        };
+
+        const gravacaoPromise = new Promise((resolve) => {
+          recorder.onstop = () => {
+            resolve(new Blob(chunks, { type: mimeType }));
+          };
+        });
+
+        recorder.start();
+
+        const startTime = performance.now();
+        while (true) {
+          if (gravacaoCancelada) {
+            recorder.stop();
+            fecharModalExportarVideo();
+            return;
+          }
+
+          const elapsed = (performance.now() - startTime) / 1000;
+          if (elapsed >= duracaoTotal) {
+            renderizarFrameInstante(duracaoTotal);
+            break;
+          }
+
+          renderizarFrameInstante(elapsed);
+
+          const pct = Math.min(95, Math.round(25 + ((elapsed / duracaoTotal) * 70)));
+          progressFill.style.width = `${pct}%`;
+          const faseNome = (enableIntro && elapsed < introDur) ? "Intro 3 Cards" : "Scroll Contínuo";
+          statusText.innerText = `Gravando [${faseNome}]: ${Math.round((elapsed/duracaoTotal)*100)}% (${elapsed.toFixed(1)}s / ${duracaoTotal.toFixed(1)}s)`;
+
+          await new Promise(r => requestAnimationFrame(r));
+        }
+
+        recorder.stop();
+        statusText.innerText = "Processando vídeo final...";
+        videoBlob = await gravacaoPromise;
+      }
+
+      if (wakeLock) {
+        wakeLock.release().catch(() => {});
+      }
+
+      if (gravacaoCancelada || !videoBlob) {
+        fecharModalExportarVideo();
+        return;
+      }
+
+      statusText.innerText = "Preparando arquivo para a Galeria...";
+      progressFill.style.width = "98%";
+
+      // 5. Salvamento direto na Galeria de Fotos (Mobile: iOS / Android)
+      let salvoViaShare = false;
+      if (navigator.canShare) {
+        try {
+          const videoFile = new File([videoBlob], `video_historia_${Date.now()}.${extensao}`, { type: mimeType });
+          if (navigator.canShare({ files: [videoFile] })) {
+            statusText.innerText = "📱 Toque em 'Salvar Vídeo' para enviar para a Galeria de Fotos!";
+            await navigator.share({
+              title: "Vídeo Manga Stories",
+              text: "Salvar vídeo na Galeria de Fotos",
+              files: [videoFile]
+            });
+            salvoViaShare = true;
+            mostrarToast("📱 Selecione 'Salvar Vídeo' na tela para guardar nas Fotos!");
+          }
+        } catch (err) {
+          console.log("Compartilhamento nativo cancelado pelo usuário ou fallback:", err);
+        }
+      }
+
+      // Fallback para download clássico (Desktop ou navegadores sem Web Share)
+      if (!salvoViaShare) {
+        const videoUrl = URL.createObjectURL(videoBlob);
+        const downloadLink = document.createElement('a');
+        downloadLink.href = videoUrl;
+        downloadLink.download = `video_historia_youtube_${targetH}p.${extensao}`;
+        downloadLink.click();
+        mostrarToast(`✓ Vídeo baixado com sucesso! (${targetH}p ${extensao.toUpperCase()})`);
+      }
+
+      statusText.innerText = `✓ Concluído com sucesso!`;
+      progressFill.style.width = "100%";
+
+      setTimeout(() => {
+        fecharModalExportarVideo();
+      }, 2500);
+    }
+
+    /* ========================================================
+       SISTEMA EXCLUSIVO DE SALVAR / CARREGAR PROJETO (.matawa)
+       ======================================================== */
+    function mostrarToast(mensagem, isError = false) {
+      const toast = document.getElementById('toastNotification');
+      toast.innerText = mensagem;
+      if (isError) {
+        toast.classList.add('toast-error');
+      } else {
+        toast.classList.remove('toast-error');
+      }
+      toast.style.display = 'flex';
+      setTimeout(() => {
+        toast.style.display = 'none';
+      }, 3500);
+    }
+
+    function salvarProjeto() {
+      if (!cards || cards.length === 0) {
+        mostrarToast("Adicione pelo menos 1 card para salvar o projeto.", true);
+        return;
+      }
+
+      const payload = {
+        signature: "MATAWAS_PROJECT_FILE_V1",
+        app: "Matawas Stories Video Studio",
+        version: "1.0",
+        savedAt: new Date().toISOString(),
+        cardsCount: cards.length,
+        settings: {
+          cardDuration: document.getElementById('videoCardDuration')?.value || 5,
+          scrollSpeed: document.getElementById('scrollSpeed')?.value || 1
+        },
+        cards: cards
+      };
+
+      try {
+        const jsonStr = JSON.stringify(payload);
+        // Codificação com cabeçalho exclusivo proprietário do app
+        const encodedData = "MATAWA_PROJECT::" + btoa(unescape(encodeURIComponent(jsonStr)));
+
+        const blob = new Blob([encodedData], { type: "application/octet-stream" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        
+        const dataFormatada = new Date().toISOString().slice(0, 10);
+        link.download = `historia_${dataFormatada}.matawa`;
+        link.href = url;
+        link.click();
+
+        mostrarToast(`💾 Projeto salvo com sucesso! (${cards.length} cenas em arquivo .matawa)`);
+      } catch (err) {
+        console.error(err);
+        mostrarToast("Erro ao salvar o arquivo do projeto.", true);
+      }
+    }
+
+    function carregarProjetoTrigger() {
+      const input = document.getElementById('loadProjectInput');
+      input.value = ""; // limpa seleção anterior
+      input.click();
+    }
+
+    function processarArquivoProjeto(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      // Validação rápida de extensão
+      if (!file.name.toLowerCase().endsWith('.matawa')) {
+        mostrarToast("⚠️ Arquivo inválido! Apenas arquivos .matawa são aceitos.", true);
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const content = e.target.result;
+
+        // Validação da assinatura proprietária única
+        if (!content.startsWith("MATAWA_PROJECT::")) {
+          mostrarToast("❌ Arquivo incompatível! Este arquivo não foi criado pelo Matawas Stories.", true);
+          return;
+        }
+
+        try {
+          const rawBase64 = content.replace("MATAWA_PROJECT::", "").trim();
+          const jsonStr = decodeURIComponent(escape(atob(rawBase64)));
+          const projectData = JSON.parse(jsonStr);
+
+          if (projectData.signature !== "MATAWAS_PROJECT_FILE_V1" || !Array.isArray(projectData.cards)) {
+            throw new Error("Assinatura interna inválida");
+          }
+
+          // Restaurar estado do projeto
+          cards = projectData.cards;
+          
+          if (projectData.settings) {
+            const durEl = document.getElementById('videoCardDuration');
+            const spdEl = document.getElementById('scrollSpeed');
+            if (durEl && projectData.settings.cardDuration) durEl.value = projectData.settings.cardDuration;
+            if (spdEl && projectData.settings.scrollSpeed) spdEl.value = projectData.settings.scrollSpeed;
+          }
+
+          resetScroll();
+          renderEditor();
+          dispararAutoSave();
+          mostrarToast(`📂 Projeto "${file.name}" carregado com sucesso! (${cards.length} cenas restauradas)`);
+        } catch (err) {
+          console.error(err);
+          mostrarToast("❌ Erro ao abrir: o arquivo está corrompido ou foi modificado.", true);
+        }
+      };
+
+      reader.readAsText(file);
+    }
+
+    // Inicialização
+    carregarConfiguracoesServidor();
+    renderEditor();
+    recuperarAutoSaveSeExistir();
+  </script>
+  <div id="toastNotification" class="toast-msg"></div>
+</body>
+</html>

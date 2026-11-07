@@ -1,99 +1,74 @@
-# Guia de Publicação na Web (Deploy) - Matawas Stories
+# Publicação Direta pelo GitHub (GitHub Pages)
 
-Este guia detalha como disponibilizar o **Matawas Stories** na internet para acesso público através de um domínio ou link HTTPS.
+Você pode publicar o **Matawas Stories** diretamente pelo próprio **GitHub**, sem precisar de nenhuma plataforma de terceiros (como Vercel ou Netlify). O GitHub oferece hospedagem gratuita, link próprio e certificado HTTPS oficial.
 
----
-
-## 🔒 Segurança de Chaves de API na Web
-
-Existem duas formas recomendadas de disponibilizar o estúdio na internet:
-
-1. **Modo "Chave do Usuário" (Bring Your Own Key - Recomendado para sites públicos abertos):**
-   - O projeto é hospedado como um site 100% estático (Vercel, Netlify ou Cloudflare Pages).
-   - Você **não** inclui a sua chave no código público.
-   - Cada usuário que acessar pode colar sua própria chave gratuita do Google AI Studio no modal de IA (a chave fica salva no `localStorage` do navegador do próprio usuário).
-2. **Modo "Serviço Próprio" (Sua Chave com Proxy Serverless):**
-   - Você hospeda o frontend na Vercel ou Netlify.
-   - A sua chave fica salva nas **Environment Variables** da plataforma.
-   - Uma **Serverless Function** (ex: `/api/config` ou `/api/gemini`) responde com as credenciais ou faz a intermediação da chamada à IA sem expor a chave para o público.
-
----
-
-## Opção 1: Publicação com Vercel (Recomendado)
-
-A Vercel é a forma mais rápida e com suporte nativo a HTTPS e domínio gratuito `.vercel.app`.
-
-### Passo a Passo:
-
-1. Suba seu projeto para um repositório no GitHub:
-   ```bash
-   git add .
-   git commit -m "docs: documentação e deploy para publicação web"
-   git branch -M main
-   git remote add origin https://github.com/SEU_USUARIO/matawas-stories.git
-   git push -u origin main
-   ```
-
-2. Acesse [vercel.com](https://vercel.com) e faça login com seu GitHub.
-3. Clique em **"Add New Project"** e selecione o repositório `matawas-stories`.
-4. Em **Root Directory**, mantenha `./`.
-5. Se for usar o modo com chave protegida, adicione as variáveis em **Environment Variables**:
-   - `GEMINI_API_KEY`: sua chave do Google AI Studio
-   - `GEMINI_IMAGE_MODEL`: `gemini-3.1-flash-image`
-   - `GEMINI_LLM_MODEL`: `gemini-3.8-flash`
-6. Clique em **Deploy**.
-
-> **Dica para Vercel:** Crie uma pasta `api/` com o arquivo `config.js` para responder ao endpoint `/api/config` na nuvem:
-> ```javascript
-> // api/config.js
-> export default function handler(req, res) {
->   res.setHeader('Access-Control-Allow-Origin', '*');
->   res.status(200).json({
->     apiKey: process.env.GEMINI_API_KEY || '',
->     imageModel: process.env.GEMINI_IMAGE_MODEL || 'gemini-3.1-flash-image',
->     llmModel: process.env.GEMINI_LLM_MODEL || 'gemini-3.8-flash',
->     hasApiKey: Boolean(process.env.GEMINI_API_KEY)
->   });
-> }
-> ```
-
----
-
-## Opção 2: Publicação com Netlify
-
-O Netlify funciona de forma idêntica e oferece 100 GB de tráfego gratuito por mês.
-
-1. Acesse [netlify.com](https://netlify.com) e faça login.
-2. Selecione **"Import an existing project"** ➔ **GitHub**.
-3. Escolha o repositório `matawas-stories`.
-4. Configure as variáveis de ambiente em **Site Configuration ➔ Environment variables**:
-   - `GEMINI_API_KEY`
-   - `GEMINI_IMAGE_MODEL`
-   - `GEMINI_LLM_MODEL`
-5. Clique em **Deploy site**.
-
----
-
-## Opção 3: Servidor Próprio (Docker / Railway / Render)
-
-Se preferir rodar o servidor Python original na nuvem:
-
-### Dockerfile
-Crie um arquivo `Dockerfile` na raiz:
-```dockerfile
-FROM python:3.11-slim
-WORKDIR /app
-COPY . /app
-EXPOSE 8080
-ENV PORT=8080
-CMD ["python3", "servidor.py"]
+Seu link de acesso será:
+```text
+https://SEU_USUARIO.github.io/NOME_DO_REPOSITORIO/
 ```
 
-Na **Railway** ([railway.app](https://railway.app)) ou **Render** ([render.com](https://render.com)):
-- Basta conectar o repositório e o serviço detectará o Dockerfile automaticamente, gerando um link HTTPS público.
+---
+
+## 🚀 Passo a Passo para Ativar o Link no GitHub
+
+### Passo 1: Enviar o código para o seu GitHub
+Abra o terminal na pasta do projeto e execute:
+
+```bash
+# 1. Adicionar o arquivo de entrada index.html e as configurações
+git add .
+
+# 2. Fazer o commit
+git commit -m "feat: preparar projeto para publicação no GitHub Pages"
+
+# 3. Renomear a branch para main (padrão do GitHub)
+git branch -M main
+
+# 4. Vincular ao seu repositório no GitHub (troque pelo link do seu repositório)
+git remote add origin https://github.com/SEU_USUARIO/matawas-stories.git
+
+# 5. Enviar os arquivos
+git push -u origin main
+```
+
+*(Se você já tinha o repositório configurado no GitHub, basta dar `git push`).*
 
 ---
 
-## 📱 Requisitos de Produção para o Celular
-- O recurso de **Salvar direto na Galeria de Fotos** (`navigator.share`) **exige conexão HTTPS** por regra de segurança dos navegadores móveis (Safari no iOS e Chrome no Android).
-- Ao publicar na Vercel, Netlify ou Cloudflare, o certificado SSL/HTTPS é gerado automaticamente e gratuito, fazendo o salvamento no celular funcionar com 100% de precisão!
+### Passo 2: Ativar o GitHub Pages no Repositório
+
+1. Abra a página do seu repositório no **GitHub** pelo navegador.
+2. No menu superior do repositório, clique na aba **Settings** (Configurações ⚙️).
+3. No menu lateral esquerdo, desça até a seção **Pages** (abaixo de *Code and automation*).
+4. Na tela de **GitHub Pages**, configure a seção **Build and deployment**:
+   - **Source:** Selecione `Deploy from a branch`.
+   - **Branch:** Escolha `main` (ou `master`).
+   - **Folder:** Escolha `/ (root)`.
+5. Clique no botão azul **Save**.
+
+---
+
+### Passo 3: Acessar seu link público!
+
+- Aguarde cerca de **1 a 2 minutos**.
+- Recarregue a página de configurações. No topo aparecerá a mensagem verde:
+  > **Your site is live at `https://SEU_USUARIO.github.io/matawas-stories/`**
+- Clique no link e o seu estúdio abrirá imediatamente!
+
+---
+
+## 🔑 Como Funciona a Chave do Gemini no GitHub Pages
+
+O GitHub Pages é uma hospedagem estática pública. Isso significa que você **nunca** deve salvar chaves de API secretas dentro do código público do GitHub.
+
+Por isso, o Matawas Stories foi projetado com suporte nativo ao **Modo Navegador Seguro**:
+1. Ao abrir o site pelo link do GitHub Pages pela primeira vez, clique em **✨ Gerar com IA** em qualquer card.
+2. Cole sua chave gratuita do Google AI Studio no campo de chave.
+3. O estúdio salvará a chave com segurança no **`localStorage` do seu próprio navegador**.
+4. Ela ficará salva permanentemente no seu dispositivo (computador ou celular), sem nunca ser exposta na internet para outras pessoas!
+
+---
+
+## 📱 Vantagens do GitHub Pages para Celulares
+- O GitHub Pages fornece automaticamente um certificado **HTTPS**.
+- Com HTTPS, a **Web Share API** funciona perfeitamente, permitindo que você exporte os vídeos no celular e toque em **"Salvar Vídeo"** para enviar direto para a sua **Galeria de Fotos / Rolo de Câmera**!

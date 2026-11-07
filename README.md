@@ -75,9 +75,9 @@
 
 ---
 
-## 🌐 Publicação na Web
+## 🌐 Publicação no GitHub Pages (Link Oficial)
 
-Para colocar este projeto no ar publicamente na internet (Vercel, Netlify ou Cloudflare Pages), consulte o guia completo em [DEPLOY.md](DEPLOY.md).
+Para colocar este projeto no ar gratuitamente através do próprio **GitHub Pages** (gerando um link HTTPS oficial `https://SEU_USUARIO.github.io/matawas-stories/`), consulte o passo a passo completo em [DEPLOY.md](DEPLOY.md).
 
 ---
 
