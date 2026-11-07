@@ -7,6 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="mp4-muxer.min.js"></script>
   <style>
     :root {
       --bg-main: #0c0e12;
@@ -1451,6 +1452,49 @@
       }
     }
 
+    /* PRÉ-CARREGAMENTO SINCRONIZADO DE IMAGENS (Evita travamentos e gargalos de GPU) */
+    async function precarregarTodasImagens() {
+      const promises = cards.map(c => {
+        if (c.image && !c._loadedImg) {
+          return new Promise(res => {
+            const img = new Image();
+            img.onload = () => { c._loadedImg = img; res(); };
+            img.onerror = () => { res(); };
+            img.src = c.image;
+          });
+        }
+        return Promise.resolve();
+      });
+      await Promise.all(promises);
+    }
+
+    /* RENDERIZAÇÃO VIRTUALIZADA EM TEMPO REAL DA ESTEIRA (Zero consumo de VRAM, suporta centenas de cards) */
+    function desenharQuadroEsteira(outCtx, cards, currentScrollX) {
+      outCtx.fillStyle = '#0f1013';
+      outCtx.fillRect(0, 0, 1920, 1080);
+
+      const cardW = 620;
+      const cardH = 1040;
+      const gap = 25;
+      const margin = 20;
+      const step = cardW + gap; // 645px
+
+      // Determinar faixa de índices visíveis no viewport [0, 1920]
+      const minX = currentScrollX - cardW;
+      const maxX = currentScrollX + 1920;
+
+      const firstIndex = Math.max(0, Math.floor((minX - margin) / step));
+      const lastIndex = Math.min(cards.length - 1, Math.ceil((maxX - margin) / step));
+
+      for (let i = firstIndex; i <= lastIndex; i++) {
+        const cardX = (margin + i * step) - currentScrollX;
+        if (cardX + cardW >= -10 && cardX <= 1930) {
+          desenharSlotImagem(outCtx, cards[i], cardX, 20, cardW, cardH, 1, 1);
+          desenharSlotTexto(outCtx, cards[i], cardX, 20, cardW, cardH, 1);
+        }
+      }
+    }
+
     async function baixarCardIndividual(id) {
       const card = cards.find(c => c.id === id);
       if (!card) return;
@@ -1499,6 +1543,7 @@
 
     /* ========================================================
        GERADOR DE VÍDEO COMPLETO PARA O YOUTUBE (1920x1080)
+       COM TAXA DE QUADROS DETERMINÍSTICA E SEM GARGALO DE MEMÓRIA
        ======================================================== */
     function atualizarTempoEstimado() {
       const durPorCard = parseInt(document.getElementById('videoCardDuration')?.value || 5);
@@ -1512,7 +1557,7 @@
     function abrirModalExportarVideo() {
       atualizarTempoEstimado();
       document.getElementById('modalTitle').innerText = 'Exportar Vídeo para o YouTube';
-      document.getElementById('modalDesc').innerText = 'Gere o arquivo de vídeo pronto em 1080p Full HD com rolagem contínua.';
+      document.getElementById('modalDesc').innerText = 'Gere o arquivo de vídeo pronto em 1080p Full HD com velocidade 100% constante.';
       document.getElementById('modalConfigForm').style.display = 'block';
       document.getElementById('modalProgressArea').style.display = 'none';
       document.getElementById('videoModal').style.display = 'flex';
@@ -1529,135 +1574,216 @@
       const progressFill = document.getElementById('progressBarFill');
       const statusText = document.getElementById('progressStatusText');
 
-      statusText.innerText = "1/3: Construindo faixa panorâmica de alta resolução...";
-      progressFill.style.width = "15%";
+      // 1. Manter tela ativa (Wake Lock no celular/desktop para evitar suspensão)
+      let wakeLock = null;
+      if ('wakeLock' in navigator) {
+        try { wakeLock = await navigator.wakeLock.request('screen'); } catch (e) {}
+      }
 
-      // 1. Pré-renderizar toda a esteira de cards em um canvas offscreen
+      statusText.innerText = "1/3: Otimizando e pré-carregando imagens dos cards...";
+      progressFill.style.width = "10%";
+      await precarregarTodasImagens();
+
+      // 2. Parâmetros da timeline matemática
       const cardW = 620;
       const cardH = 1040;
       const gap = 25;
       const margin = 20;
 
-      const faixaW = (cards.length * cardW) + ((cards.length - 1) * gap) + (margin * 2);
-      const faixaH = 1080;
-
-      const faixaCanvas = document.createElement('canvas');
-      faixaCanvas.width = faixaW;
-      faixaCanvas.height = faixaH;
-      const fCtx = faixaCanvas.getContext('2d');
-
-      fCtx.fillStyle = '#121418';
-      fCtx.fillRect(0, 0, faixaW, faixaH);
-
-      let curX = margin;
-      for (let i = 0; i < cards.length; i++) {
-        statusText.innerText = `Renderizando card ${i + 1} de ${cards.length}...`;
-        await desenharCardNoCanvas(fCtx, cards[i], curX, 20, cardW, cardH);
-        curX += cardW + gap;
-      }
-
-      progressFill.style.width = "30%";
-      statusText.innerText = "2/3: Configurando gravador 1080p do YouTube...";
-
-      // 2. Preparar o canvas de saída 1920x1080
-      const outCanvas = document.getElementById('videoRenderCanvas');
-      outCanvas.width = 1920;
-      outCanvas.height = 1080;
-      const outCtx = outCanvas.getContext('2d');
-
       const durPorCard = parseFloat(document.getElementById('videoCardDuration').value) || 5;
       const enableIntro = document.getElementById('enableIntroTransition')?.checked !== false;
 
-      // Se a transição oficial dos 3 cards estiver ativa:
-      const introDur = enableIntro ? 7.5 : 0; // segundos de intro estilo GokuShow
+      const introDur = enableIntro ? 7.5 : 0; // segundos de transição inicial
       const scrollDur = enableIntro 
         ? Math.max(4, (cards.length - 1) * durPorCard) 
         : (cards.length * durPorCard);
       const duracaoTotal = introDur + scrollDur;
 
+      const totalFaixaW = (cards.length * cardW) + ((cards.length - 1) * gap) + (margin * 2);
+      const maxDeslocamento = Math.max(0, totalFaixaW - 1920);
+
       const fps = 30;
       const totalFrames = Math.round(duracaoTotal * fps);
-      const maxDeslocamento = Math.max(0, faixaW - 1920);
 
-      // Determinar formato suportado pelo navegador (priorizando MP4 para iOS/Android)
-      let mimeType = 'video/mp4; codecs="avc1.42E01E"';
+      const outCanvas = document.getElementById('videoRenderCanvas');
+      outCanvas.width = 1920;
+      outCanvas.height = 1080;
+      const outCtx = outCanvas.getContext('2d', { alpha: false });
+
+      // Função de renderização para qualquer instante de tempo (segundos)
+      function renderizarFrameInstante(tempo) {
+        if (enableIntro && tempo < introDur) {
+          renderizarQuadroIntro(outCtx, cards, tempo);
+        } else {
+          const tempoScroll = enableIntro ? (tempo - introDur) : tempo;
+          const progressoScroll = Math.min(1, Math.max(0, tempoScroll / scrollDur));
+          const currentScrollX = progressoScroll * maxDeslocamento;
+          desenharQuadroEsteira(outCtx, cards, currentScrollX);
+        }
+      }
+
+      let videoBlob = null;
       let extensao = 'mp4';
-      if (!MediaRecorder.isTypeSupported(mimeType)) {
-        mimeType = 'video/mp4';
+      let mimeType = 'video/mp4';
+
+      // 3. TENTATIVA COM WEBCODECS + MP4-MUXER (Renderização acelerada, 100% determinística, sem lentidão)
+      let usouWebCodecs = false;
+      const suportaWebCodecs = typeof window.VideoEncoder === 'function' && typeof window.Mp4Muxer !== 'undefined';
+
+      if (suportaWebCodecs) {
+        try {
+          const codecsCandidatos = ['avc1.42001f', 'avc1.42E01E', 'avc1.4d002a', 'avc1.640028'];
+          let codecValido = null;
+          for (const c of codecsCandidatos) {
+            const check = await VideoEncoder.isConfigSupported({
+              codec: c,
+              width: 1920,
+              height: 1080,
+              bitrate: 8000000,
+              framerate: fps
+            });
+            if (check && check.supported) {
+              codecValido = c;
+              break;
+            }
+          }
+
+          if (codecValido) {
+            statusText.innerText = "2/3: Inicializando codificador MP4 Full HD de alta velocidade...";
+            progressFill.style.width = "20%";
+
+            const muxer = new Mp4Muxer.Muxer({
+              target: new Mp4Muxer.ArrayBufferTarget(),
+              video: {
+                codec: 'avc',
+                width: 1920,
+                height: 1080
+              },
+              fastStart: 'in-memory'
+            });
+
+            const encoder = new VideoEncoder({
+              output: (chunk, meta) => muxer.addVideoChunk(chunk, meta),
+              error: (err) => console.error("Erro VideoEncoder:", err)
+            });
+
+            await encoder.configure({
+              codec: codecValido,
+              width: 1920,
+              height: 1080,
+              bitrate: 8000000,
+              framerate: fps
+            });
+
+            const frameDurationMicros = Math.round(1_000_000 / fps);
+
+            for (let frame = 0; frame <= totalFrames; frame++) {
+              const tempoAtual = frame / fps;
+              renderizarFrameInstante(tempoAtual);
+
+              const videoFrame = new VideoFrame(outCanvas, {
+                timestamp: frame * frameDurationMicros,
+                duration: frameDurationMicros
+              });
+
+              encoder.encode(videoFrame, { keyFrame: (frame % (fps * 2) === 0) });
+              videoFrame.close();
+
+              if (frame % 15 === 0 || frame === totalFrames) {
+                const pct = Math.round(20 + ((frame / totalFrames) * 75));
+                progressFill.style.width = `${pct}%`;
+                statusText.innerText = `Renderizando [Ultra Rápido]: ${Math.round((frame/totalFrames)*100)}% (${(frame/fps).toFixed(1)}s / ${duracaoTotal.toFixed(1)}s)`;
+                await new Promise(r => setTimeout(r, 0));
+              }
+            }
+
+            statusText.innerText = "Finalizando empacotamento MP4...";
+            await encoder.flush();
+            muxer.finalize();
+
+            videoBlob = new Blob([muxer.target.buffer], { type: 'video/mp4' });
+            extensao = 'mp4';
+            mimeType = 'video/mp4';
+            usouWebCodecs = true;
+          }
+        } catch (webCodecsErr) {
+          console.warn("WebCodecs não pôde ser utilizado, aplicando fallback dinâmico:", webCodecsErr);
+        }
+      }
+
+      // 4. FALLBACK SEGURO VIA MEDIARECORDER COM SINCRONIZAÇÃO POR RELÓGIO ABSOLUTO
+      // (Garante que se houver atraso na aba, o vídeo NÃO fique em câmera lenta nem trave em cards)
+      if (!usouWebCodecs) {
+        statusText.innerText = "2/3: Configurando gravador Full HD...";
+        progressFill.style.width = "25%";
+
+        mimeType = 'video/mp4; codecs="avc1.42E01E"';
+        extensao = 'mp4';
         if (!MediaRecorder.isTypeSupported(mimeType)) {
-          mimeType = 'video/webm; codecs=vp9';
-          extensao = 'webm';
+          mimeType = 'video/mp4';
           if (!MediaRecorder.isTypeSupported(mimeType)) {
-            mimeType = 'video/webm';
+            mimeType = 'video/webm; codecs=vp9';
             extensao = 'webm';
+            if (!MediaRecorder.isTypeSupported(mimeType)) {
+              mimeType = 'video/webm';
+              extensao = 'webm';
+            }
           }
         }
-      }
 
-      const stream = outCanvas.captureStream(fps);
-      const recorder = new MediaRecorder(stream, {
-        mimeType: mimeType,
-        videoBitsPerSecond: 8000000 // 8 Mbps (alta fidelidade Full HD)
-      });
+        const stream = outCanvas.captureStream(fps);
+        const recorder = new MediaRecorder(stream, {
+          mimeType: mimeType,
+          videoBitsPerSecond: 8000000
+        });
 
-      const chunks = [];
-      recorder.ondataavailable = (e) => {
-        if (e.data.size > 0) chunks.push(e.data);
-      };
-
-      const gravacaoPromise = new Promise((resolve) => {
-        recorder.onstop = () => {
-          const blob = new Blob(chunks, { type: mimeType });
-          resolve(blob);
+        const chunks = [];
+        recorder.ondataavailable = (e) => {
+          if (e.data.size > 0) chunks.push(e.data);
         };
-      });
 
-      recorder.start();
+        const gravacaoPromise = new Promise((resolve) => {
+          recorder.onstop = () => {
+            resolve(new Blob(chunks, { type: mimeType }));
+          };
+        });
 
-      // 3. Renderizar cada frame com a transição oficial dos 3 cards + scroll contínuo
-      statusText.innerText = `3/3: Gravando vídeo em tempo real (${duracaoTotal.toFixed(1)}s)...`;
+        recorder.start();
 
-      const frameDelay = 1000 / fps;
-      for (let frame = 0; frame <= totalFrames; frame++) {
-        const tempoAtual = frame / fps;
+        const startTime = performance.now();
+        const duracaoMs = duracaoTotal * 1000;
 
-        if (enableIntro && tempoAtual < introDur) {
-          // Fase 1: Transição oficial dos 3 primeiros cards (Slot 1 texto/foto -> Slot 2 texto/foto -> Slot 3 texto/foto)
-          renderizarQuadroIntro(outCtx, cards, tempoAtual);
-        } else {
-          // Fase 2: Rolagem contínua da esteira para os próximos cards
-          const tempoScroll = enableIntro ? (tempoAtual - introDur) : tempoAtual;
-          const progressoScroll = Math.min(1, tempoScroll / scrollDur);
-          const currentScrollX = progressoScroll * maxDeslocamento;
+        while (true) {
+          const elapsed = (performance.now() - startTime) / 1000;
+          if (elapsed >= duracaoTotal) {
+            renderizarFrameInstante(duracaoTotal);
+            break;
+          }
 
-          outCtx.fillStyle = '#0f1013';
-          outCtx.fillRect(0, 0, 1920, 1080);
+          renderizarFrameInstante(elapsed);
 
-          outCtx.drawImage(
-            faixaCanvas,
-            currentScrollX, 0, 1920, 1080,
-            0, 0, 1920, 1080
-          );
+          const pct = Math.min(95, Math.round(25 + ((elapsed / duracaoTotal) * 70)));
+          progressFill.style.width = `${pct}%`;
+          const faseNome = (enableIntro && elapsed < introDur) ? "Intro 3 Cards" : "Scroll Contínuo";
+          statusText.innerText = `Gravando [${faseNome}]: ${Math.round((elapsed/duracaoTotal)*100)}% (${elapsed.toFixed(1)}s / ${duracaoTotal.toFixed(1)}s)`;
+
+          await new Promise(r => requestAnimationFrame(r));
         }
 
-        // Atualizar barra de progresso
-        const pctGeral = Math.round(30 + ((frame / totalFrames) * 70));
-        progressFill.style.width = `${pctGeral}%`;
-        const faseNome = (enableIntro && tempoAtual < introDur) ? "Intro 3 Cards" : "Scroll Contínuo";
-        statusText.innerText = `Gravando [${faseNome}]: ${Math.round((frame/totalFrames)*100)}% (${(frame/fps).toFixed(1)}s / ${duracaoTotal.toFixed(1)}s)`;
-
-        await new Promise(r => setTimeout(r, frameDelay));
+        recorder.stop();
+        statusText.innerText = "Processando vídeo final...";
+        videoBlob = await gravacaoPromise;
       }
 
-      recorder.stop();
+      if (wakeLock) {
+        wakeLock.release().catch(() => {});
+      }
+
       statusText.innerText = "Preparando arquivo para a Galeria...";
+      progressFill.style.width = "98%";
 
-      const videoBlob = await gravacaoPromise;
-
-      // Salvamento direto na Galeria de Fotos (Mobile: iOS / Android)
+      // 5. Salvamento direto na Galeria de Fotos (Mobile: iOS / Android)
       let salvoViaShare = false;
-      const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.maxTouchPoints && navigator.maxTouchPoints > 2);
-
       if (navigator.canShare) {
         try {
           const videoFile = new File([videoBlob], `video_historia_${Date.now()}.${extensao}`, { type: mimeType });
@@ -1683,7 +1809,7 @@
         downloadLink.href = videoUrl;
         downloadLink.download = `video_historia_youtube_1080p.${extensao}`;
         downloadLink.click();
-        mostrarToast(`✓ Vídeo baixado! (${extensao.toUpperCase()})`);
+        mostrarToast(`✓ Vídeo baixado com sucesso! (${extensao.toUpperCase()})`);
       }
 
       statusText.innerText = `✓ Concluído com sucesso!`;
