@@ -1511,45 +1511,66 @@
 
     function parsearRoteiroGeminiResolve(texto) {
       if (!texto || !texto.trim()) return [];
-      const cenas = [];
-      const limpo = texto.replace(/\r\n/g, "\n").trim();
 
-      // Divide por marcadores de cena (Cena 1, Scene 1, Card 1, ou numeração 1.)
-      let blocos = limpo.split(/(?:^|\n)(?=(?:(?:Cena|Scene|Quadro|Card)\s*\d+|\d+[\.\-]\s*(?:Legenda|Prompt|Cena)))/i);
+      // 1. Normalizar quebras de linha e espaços especiais de teclados mobile
+      const limpo = texto
+        .replace(/\r\n/g, "\n")
+        .replace(/\r/g, "\n")
+        .replace(/\u00A0/g, " ")
+        .trim();
+
+      // 2. Divide por marcadores de cena (Cena 1, Scene 1, Card 1, 1., etc.)
+      let blocos = limpo.split(/(?:^|\n)\s*(?=(?:(?:Cena|Scene|Quadro|Card)\s*\d+|\d+[\.\-]\s*(?:Legenda|Prompt|Cena|Scene|Quadro|Card)?|(?:Legenda|Subtitle)\s*[:\-])\b)/i);
 
       if (blocos.length <= 1 && !/(?:Cena|Scene|Quadro|Card)\s*\d+/i.test(limpo)) {
-        // Fallback: tentar quebras de parágrafo contendo Legenda ou Prompt
-        blocos = limpo.split(/\n\s*\n(?=[^\n]*(?:Legenda|Prompt|Imagem):)/i);
+        // Fallback: quebras de parágrafo duplo
+        blocos = limpo.split(/\n\s*\n+/);
       }
+
+      const cenas = [];
 
       for (let bloco of blocos) {
         bloco = bloco.trim();
         if (!bloco) continue;
 
         // Título da cena
-        const matchTitulo = bloco.match(/^(?:Cena|Scene|Quadro|Card|\#)?\s*(\d+)[:\s-]*(.*)/i);
-        const num = matchTitulo ? matchTitulo[1] : (cenas.length + 1);
+        const matchTitulo = bloco.match(/^(?:(?:Cena|Scene|Quadro|Card|\#)\s*(\d+)|\s*(\d+)[\.\-]\s*)/i);
+        const num = matchTitulo ? (matchTitulo[1] || matchTitulo[2]) : (cenas.length + 1);
         const title = `Cena ${num}`;
 
-        // Extrair Legenda
         let legenda = "";
-        const matchLegenda = bloco.match(/(?:^|\n)(?:Legenda|Texto|Hist[óo]ria|Narrador|Subtitle)\s*[:\-]\s*([\s\S]*?)(?=(?:\n(?:Prompt|Cena|Scene|Quadro|Card|\d+[\.\-])\b|$))/i);
-        if (matchLegenda) {
-          legenda = matchLegenda[1].trim();
-        }
-
-        // Extrair Prompt
         let prompt = "";
-        const matchPrompt = bloco.match(/(?:^|\n)(?:Prompt|Imagem|Visual|Image|Descri[çc][ãa]o)\s*[:\-]\s*([\s\S]*?)(?=(?:\n(?:Legenda|Texto|Cena|Scene|Quadro|Card|\d+[\.\-])\b|$))/i);
-        if (matchPrompt) {
-          prompt = matchPrompt[1].trim();
+
+        // Regex tolerante a indentação de celular e lookahead flexível
+        const matchLeg = bloco.match(/(?:^|\n)\s*(?:Legenda|Texto|Hist[óo]ria|Narrador|Subtitle)\s*[:\-]\s*([\s\S]*?)(?=(?:\n\s*(?:Prompt|Imagem|Visual|Image|Descri[çc][ãa]o|Cena|Scene|Quadro|Card|\d+[\.\-])\b|(?:\s+(?:Prompt|Imagem|Visual|Image|Descri[çc][ãa]o)\s*[:\-])|$))/i);
+        if (matchLeg) {
+          legenda = matchLeg[1].trim();
         }
 
-        // Se não encontrou cabeçalho explícito
+        const matchPr = bloco.match(/(?:^|\n|\s)(?:Prompt|Imagem|Visual|Image|Descri[çc][ãa]o)\s*[:\-]\s*([\s\S]*?)(?=(?:\n\s*(?:Legenda|Texto|Hist[óo]ria|Narrador|Subtitle|Cena|Scene|Quadro|Card|\d+[\.\-])\b|$))/i);
+        if (matchPr) {
+          prompt = matchPr[1].trim();
+        }
+
+        // Análise linha por linha como contingência caso o regex de bloco não case perfeitamente
+        if (!legenda || !prompt) {
+          const linhas = bloco.split("\n").map(l => l.trim()).filter(Boolean);
+          for (const linha of linhas) {
+            if (/^(?:Cena|Scene|Quadro|Card|\#)\s*\d+/i.test(linha)) continue;
+            if (/^(?:Legenda|Texto|Hist[óo]ria|Narrador|Subtitle)\s*[:\-]/i.test(linha)) {
+              if (!legenda) legenda = linha.replace(/^(?:Legenda|Texto|Hist[óo]ria|Narrador|Subtitle)\s*[:\-]\s*/i, "").trim();
+            } else if (/^(?:Prompt|Imagem|Visual|Image|Descri[çc][ãa]o)\s*[:\-]/i.test(linha)) {
+              if (!prompt) prompt = linha.replace(/^(?:Prompt|Imagem|Visual|Image|Descri[çc][ãa]o)\s*[:\-]\s*/i, "").trim();
+            }
+          }
+        }
+
+        // Fallback de texto corrido sem rótulos
         if (!legenda && !prompt) {
           const linhas = bloco.split("\n").map(l => l.trim()).filter(Boolean);
-          if (linhas.length > 1) {
-            legenda = linhas.slice(1).join(" ");
+          const semTitulo = linhas.filter(l => !/^(?:Cena|Scene|Quadro|Card|\#)\s*\d+/i.test(l));
+          if (semTitulo.length > 0) {
+            legenda = semTitulo.join(" ");
             prompt = legenda;
           }
         } else if (!prompt && legenda) {
@@ -1557,6 +1578,40 @@
         } else if (!legenda && prompt) {
           legenda = prompt;
         }
+
+        // ========================================================
+        // SANITIZAÇÃO RIGOROSA CONTRA VAZAMENTOS (Mobile / WhatsApp / Docs)
+        // Garante que o texto do card nunca contenha rótulos "Legenda:" ou "Prompt:"
+        // ========================================================
+        // 1. Limpa qualquer prefixo residual de "Legenda:"
+        legenda = legenda.replace(/^(?:[\s\n]*(?:Legenda|Texto|Hist[óo]ria|Narrador|Subtitle)\s*[:\-]\s*)+/i, "").trim();
+
+        // 2. Se "Prompt:" vazou para dentro da legenda, separa imediatamente
+        const idxVazamentoPrompt = legenda.search(/(?:^|\n|\s)(?:Prompt|Imagem|Visual|Image|Descri[çc][ãa]o)\s*[:\-]/i);
+        if (idxVazamentoPrompt !== -1) {
+          const parteVazada = legenda.slice(idxVazamentoPrompt);
+          const promptVazado = parteVazada.replace(/^(?:[\s\n]*(?:Prompt|Imagem|Visual|Image|Descri[çc][ãa]o)\s*[:\-]\s*)/i, "").trim();
+          if (!prompt || prompt === legenda) {
+            prompt = promptVazado;
+          }
+          legenda = legenda.slice(0, idxVazamentoPrompt).trim();
+        }
+
+        // 3. Limpa qualquer prefixo residual de "Prompt:"
+        prompt = prompt.replace(/^(?:[\s\n]*(?:Prompt|Imagem|Visual|Image|Descri[çc][ãa]o)\s*[:\-]\s*)+/i, "").trim();
+
+        // 4. Se "Legenda:" vazou para dentro do prompt, separa
+        const idxVazamentoLegenda = prompt.search(/(?:^|\n|\s)(?:Legenda|Texto|Hist[óo]ria|Narrador|Subtitle)\s*[:\-]/i);
+        if (idxVazamentoLegenda !== -1) {
+          if (!legenda) {
+            legenda = prompt.slice(idxVazamentoLegenda).replace(/^(?:[\s\n]*(?:Legenda|Texto|Hist[óo]ria|Narrador|Subtitle)\s*[:\-]\s*)/i, "").trim();
+          }
+          prompt = prompt.slice(0, idxVazamentoLegenda).trim();
+        }
+
+        // 5. Limpeza final de sobras
+        legenda = legenda.replace(/^(?:[\s\n]*(?:Legenda|Texto|Hist[óo]ria|Narrador|Subtitle)\s*[:\-]\s*)+/i, "").trim();
+        prompt = prompt.replace(/^(?:[\s\n]*(?:Prompt|Imagem|Visual|Image|Descri[çc][ãa]o)\s*[:\-]\s*)+/i, "").trim();
 
         if (legenda || prompt) {
           cenas.push({ numero: parseInt(num, 10) || (cenas.length + 1), title, legenda, prompt });
