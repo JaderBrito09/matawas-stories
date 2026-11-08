@@ -78,20 +78,22 @@ class MatawasRequestHandler(http.server.SimpleHTTPRequestHandler):
 
         super().do_GET()
 
+class ReusableTCPServer(socketserver.TCPServer):
+    allow_reuse_address = True
+
 def iniciar_servidor():
     import threading
 
     portas_ativas = []
 
     def rodar_porta(porta):
-        socketserver.TCPServer.allow_reuse_address = True
         try:
-            with socketserver.TCPServer(("", porta), MatawasRequestHandler) as httpd:
+            with ReusableTCPServer(("", porta), MatawasRequestHandler) as httpd:
                 portas_ativas.append(porta)
                 print(f"✓ Servidor Matawas Stories rodando na porta {porta}")
                 httpd.serve_forever()
-        except OSError:
-            pass
+        except OSError as e:
+            print(f"⚠️ Porta {porta} não pôde ser iniciada: {e}")
 
     portas_candidatas = [8080, 8081, 8082]
     threads = []
