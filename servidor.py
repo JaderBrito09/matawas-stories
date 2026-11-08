@@ -43,7 +43,16 @@ def carregar_env():
 ENV = carregar_env()
 PORT = ENV.get("PORT", 8080)
 
+PROJECT_DIR = os.path.dirname(os.path.abspath(__file__))
+
 class MatawasRequestHandler(http.server.SimpleHTTPRequestHandler):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, directory=PROJECT_DIR, **kwargs)
+
+    def log_message(self, format, *args):
+        # Mantém a saída limpa
+        pass
+
     def do_GET(self):
         # Endpoint para entregar as configurações seguras do .env ao frontend
         if self.path == "/api/config":
@@ -78,8 +87,13 @@ class MatawasRequestHandler(http.server.SimpleHTTPRequestHandler):
 
         super().do_GET()
 
-class ReusableTCPServer(socketserver.TCPServer):
+class ReusableThreadingHTTPServer(http.server.ThreadingHTTPServer):
     allow_reuse_address = True
+    daemon_threads = True
+
+    def handle_error(self, request, client_address):
+        # Ignora quedas repentinas de conexão do browser
+        pass
 
 def iniciar_servidor():
     import threading
@@ -87,13 +101,17 @@ def iniciar_servidor():
     portas_ativas = []
 
     def rodar_porta(porta):
-        try:
-            with ReusableTCPServer(("", porta), MatawasRequestHandler) as httpd:
-                portas_ativas.append(porta)
-                print(f"✓ Servidor Matawas Stories rodando na porta {porta}")
-                httpd.serve_forever()
-        except OSError as e:
-            print(f"⚠️ Porta {porta} não pôde ser iniciada: {e}")
+        while True:
+            try:
+                server = ReusableThreadingHTTPServer(("", porta), MatawasRequestHandler)
+                if porta not in portas_ativas:
+                    portas_ativas.append(porta)
+                    print(f"✓ Servidor Matawas Stories rodando na porta {porta}")
+                server.serve_forever()
+            except OSError:
+                time.sleep(1.5)
+            except Exception:
+                time.sleep(1.0)
 
     portas_candidatas = [8080, 8081, 8082]
     threads = []
