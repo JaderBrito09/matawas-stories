@@ -6,7 +6,7 @@
   <title>Gerador de Vídeos Manga Stories (Estilo GokuShow / YouTube 1080p)</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&family=Nunito:wght@800;900&family=Montserrat:wght@600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   <script src="mp4-muxer.min.js"></script>
   <style>
     :root {
@@ -697,6 +697,28 @@
       animation: slideUpFade 0.3s ease;
     }
 
+    .btn-thumb-goku {
+      background: linear-gradient(135deg, #f59e0b, #ea580c, #dc2626);
+      color: #fff;
+      font-weight: 800;
+      border: none;
+      box-shadow: 0 4px 18px rgba(245, 158, 11, 0.45);
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 18px;
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: all 0.2s ease;
+    }
+
+    .btn-thumb-goku:hover {
+      background: linear-gradient(135deg, #fbbf24, #f97316, #ef4444);
+      transform: translateY(-1.5px) scale(1.02);
+      box-shadow: 0 6px 24px rgba(245, 158, 11, 0.65);
+    }
+
     @keyframes slideUpFade {
       from { opacity: 0; transform: translate(-50%, 20px); }
       to { opacity: 1; transform: translate(-50%, 0); }
@@ -716,6 +738,9 @@
       </div>
       <button class="btn-gemini-resolve" onclick="abrirModalGeminiResolve()" title="Cole seu roteiro com cenas e deixe o Gemini criar todos os cards e imagens automaticamente!">
         🧠 O Gemini Resolve
+      </button>
+      <button class="btn-thumb-goku" onclick="abrirModalThumbnailGokuShow()" title="Crie uma thumbnail profissional de 3 quadros igual às do canal Goku Show!">
+        🔥 Thumbnail Goku Show
       </button>
       <button class="btn-youtube" onclick="abrirModalExportarVideo()">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
@@ -741,9 +766,14 @@
     <div class="preview-section">
       <div class="preview-header">
         <h2>Pré-visualização do Vídeo <span class="badge-169">16:9 Full HD (1920x1080)</span></h2>
-        <button class="btn-youtube" style="padding: 7px 14px; font-size: 13px;" onclick="abrirModalExportarVideo()">
-          🎬 Gerar Vídeo MP4 / WebM
-        </button>
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <button class="btn-thumb-goku" style="padding: 7px 14px; font-size: 13px;" onclick="abrirModalThumbnailGokuShow()" title="Crie a thumbnail oficial 16:9 de 3 quadros igual ao Goku Show">
+            🔥 Thumbnail Goku Show
+          </button>
+          <button class="btn-youtube" style="padding: 7px 14px; font-size: 13px;" onclick="abrirModalExportarVideo()">
+            🎬 Gerar Vídeo MP4 / WebM
+          </button>
+        </div>
       </div>
 
       <div class="player-window" id="playerWindow">
@@ -1026,6 +1056,186 @@
           Cancelar
         </button>
       </div>
+    </div>
+  </div>
+
+  <!-- MODAL CRIADOR DE THUMBNAIL (ESTILO GOKU SHOW OFICIAL 16:9) -->
+  <div class="modal-overlay" id="modalThumbnailGokuShow" style="display:none;">
+    <div class="modal-box" style="max-width: 980px; width: 95%; max-height: 92vh; overflow-y: auto; text-align: left; padding: 24px; border: 1px solid #f59e0b; box-shadow: 0 16px 50px rgba(0,0,0,0.85), 0 0 30px rgba(245, 158, 11, 0.2);">
+      
+      <!-- Cabeçalho do Modal -->
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:16px;">
+        <div>
+          <h3 style="background: linear-gradient(135deg, #fbbf24, #f97316, #ef4444); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-size: 22px; margin:0; display:flex; align-items:center; gap:8px;">
+            🔥 Thumbnail Maker (Estilo Goku Show)
+          </h3>
+          <p style="font-size: 13px; color: var(--text-muted); margin: 4px 0 0;">
+            16:9 Oficial (1280x720) com 3 quadros de narrativa, alto contraste e ganchos virais para o YouTube.
+          </p>
+        </div>
+        <button class="btn-close" onclick="fecharModalThumbnailGokuShow()" style="background:transparent; border:none; color:#94a3b8; font-size:24px; cursor:pointer; line-height:1;">&times;</button>
+      </div>
+
+      <!-- BANNER INTELIGÊNCIA ARTIFICIAL GOKU SHOW -->
+      <div style="background: linear-gradient(135deg, rgba(245, 158, 11, 0.12), rgba(220, 38, 38, 0.15)); border: 1px solid rgba(245, 158, 11, 0.4); border-radius: 12px; padding: 14px 18px; margin-bottom: 18px; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px;">
+        <div style="flex: 1; min-width: 260px;">
+          <div style="font-weight: 800; font-size: 14.5px; color: #fbbf24; display: flex; align-items: center; gap: 6px;">
+            <span>✨</span> IA Goku Show: Identificar Melhores Partes da História
+          </div>
+          <div style="font-size: 12.5px; color: #cbd5e1; margin-top: 3px; line-height: 1.4;">
+            A IA analisa todas as cenas da sua história, escolhe automaticamente as 3 mais impactantes (Origem, Reviravolta e Clímax) e gera ganchos virais curtos de 2 a 3 palavras!
+          </div>
+        </div>
+        <button type="button" class="btn-thumb-goku" id="btnThumbAiAnalyze" onclick="identificarMelhoresCenasComIA()" style="padding: 10px 18px; font-size: 13.5px; white-space: nowrap;">
+          ⚡ Sugerir Cenas e Ganchos com IA
+        </button>
+      </div>
+
+      <!-- STATUS IA THUMBNAIL (QUANDO CARREGANDO) -->
+      <div id="thumbAiStatusArea" style="display:none; text-align:center; padding: 10px; background: rgba(0,0,0,0.4); border-radius: 8px; margin-bottom: 14px; border: 1px dashed #f59e0b;">
+        <span class="ai-spinner" style="display:inline-block; width:16px; height:16px; vertical-align:middle; margin-right:8px; border:2px solid #f59e0b; border-top-color:transparent; border-radius:50%; animation:spin 0.8s linear infinite;"></span>
+        <span id="thumbAiStatusText" style="font-size: 13px; color: #fbbf24; font-weight: 600;">Analisando história com a IA...</span>
+      </div>
+
+      <!-- CANVAS DE PREVIEW EM TEMPO REAL (16:9) -->
+      <div style="background: #000; border-radius: 12px; padding: 12px; border: 1px solid #334155; text-align: center; margin-bottom: 18px;">
+        <canvas id="canvasGokuThumb" width="1280" height="720" style="width: 100%; max-width: 780px; aspect-ratio: 16/9; display: block; margin: 0 auto; border-radius: 6px; box-shadow: 0 10px 30px rgba(0,0,0,0.9); background: #000;"></canvas>
+        <div style="display: flex; justify-content: space-between; align-items: center; max-width: 780px; margin: 10px auto 0; font-size: 11.5px; color: #94a3b8;">
+          <span>📐 <strong>1280 x 720 HD</strong> (16:9 Oficial)</span>
+          <span>🎨 3 Quadros Verticais + Barra Preta de Alto Contraste</span>
+          <span>✍️ Fonte Goku Show (<span id="thumbFontIndicator">Fredoka 800</span>)</span>
+        </div>
+      </div>
+
+      <!-- CONFIGURAÇÃO DOS 3 PAINÉIS -->
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; margin-bottom: 18px;">
+        
+        <!-- PAINEL 1: O INÍCIO / ORIGEM -->
+        <div style="background: #141720; border: 1px solid #232936; border-radius: 10px; padding: 12px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <strong style="color: #60a5fa; font-size: 13px;">Quadro 1: Início / Origem</strong>
+            <span style="background: rgba(96, 165, 250, 0.15); color: #93c5fd; font-size: 10.5px; padding: 2px 7px; border-radius: 8px; font-weight: 700;">Premissa</span>
+          </div>
+          
+          <label style="font-size: 11px; color: var(--text-muted); display: block; margin-bottom: 4px;">Cena da História:</label>
+          <select id="thumbCardSelect0" onchange="selecionarCardPainelThumb(0, this.value)" style="width: 100%; padding: 8px; background: #0c0e12; border: 1px solid #2e3646; color: #fff; border-radius: 6px; font-size: 12px; margin-bottom: 8px;"></select>
+
+          <label style="font-size: 11px; color: var(--text-muted); display: block; margin-bottom: 4px;">Gancho de Texto (2 a 3 palavras):</label>
+          <input type="text" id="thumbHookText0" value="Best Friends?" placeholder="Ex: Best Friends?" oninput="renderizarThumbnailGokuCanvas()" style="width: 100%; padding: 8px; background: #0c0e12; border: 1px solid #2e3646; color: #fff; border-radius: 6px; font-size: 13px; font-weight: 700; margin-bottom: 8px;">
+
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+            <label style="font-size: 11px; color: var(--text-muted);">Enquadramento Vertical:</label>
+            <span id="thumbOffsetYVal0" style="font-size: 11px; color: #94a3b8;">50%</span>
+          </div>
+          <input type="range" id="thumbOffsetY0" min="0" max="100" value="50" oninput="ajustarOffsetPainelThumb(0, this.value)" style="width: 100%; margin-bottom: 8px;">
+
+          <div style="display: flex; gap: 6px;">
+            <input type="file" id="thumbCustomImg0" accept="image/*" style="display:none;" onchange="carregarImagemCustomThumb(0, event)">
+            <button type="button" class="btn-secondary" style="font-size: 11px; padding: 5px 8px; flex: 1;" onclick="document.getElementById('thumbCustomImg0').click()">📁 Usar Imagem Própria</button>
+            <button type="button" class="btn-secondary" style="font-size: 11px; padding: 5px 8px;" onclick="resetarImagemCustomThumb(0)" title="Voltar para a cena da história">↺</button>
+          </div>
+        </div>
+
+        <!-- PAINEL 2: A REVIRAVOLTA / VÍNCULO -->
+        <div style="background: #141720; border: 1px solid #232936; border-radius: 10px; padding: 12px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <strong style="color: #fbbf24; font-size: 13px;">Quadro 2: Reviravolta / Vínculo</strong>
+            <span style="background: rgba(251, 191, 36, 0.15); color: #fde68a; font-size: 10.5px; padding: 2px 7px; border-radius: 8px; font-weight: 700;">Conflito</span>
+          </div>
+
+          <label style="font-size: 11px; color: var(--text-muted); display: block; margin-bottom: 4px;">Cena da História:</label>
+          <select id="thumbCardSelect1" onchange="selecionarCardPainelThumb(1, this.value)" style="width: 100%; padding: 8px; background: #0c0e12; border: 1px solid #2e3646; color: #fff; border-radius: 6px; font-size: 12px; margin-bottom: 8px;"></select>
+
+          <label style="font-size: 11px; color: var(--text-muted); display: block; margin-bottom: 4px;">Gancho de Texto (2 a 3 palavras):</label>
+          <input type="text" id="thumbHookText1" value="The Ultimate Duo!" placeholder="Ex: The Ultimate Duo!" oninput="renderizarThumbnailGokuCanvas()" style="width: 100%; padding: 8px; background: #0c0e12; border: 1px solid #2e3646; color: #fff; border-radius: 6px; font-size: 13px; font-weight: 700; margin-bottom: 8px;">
+
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+            <label style="font-size: 11px; color: var(--text-muted);">Enquadramento Vertical:</label>
+            <span id="thumbOffsetYVal1" style="font-size: 11px; color: #94a3b8;">50%</span>
+          </div>
+          <input type="range" id="thumbOffsetY1" min="0" max="100" value="50" oninput="ajustarOffsetPainelThumb(1, this.value)" style="width: 100%; margin-bottom: 8px;">
+
+          <div style="display: flex; gap: 6px;">
+            <input type="file" id="thumbCustomImg1" accept="image/*" style="display:none;" onchange="carregarImagemCustomThumb(1, event)">
+            <button type="button" class="btn-secondary" style="font-size: 11px; padding: 5px 8px; flex: 1;" onclick="document.getElementById('thumbCustomImg1').click()">📁 Usar Imagem Própria</button>
+            <button type="button" class="btn-secondary" style="font-size: 11px; padding: 5px 8px;" onclick="resetarImagemCustomThumb(1)" title="Voltar para a cena da história">↺</button>
+          </div>
+        </div>
+
+        <!-- PAINEL 3: O CLÍMAX / PODER -->
+        <div style="background: #141720; border: 1px solid #232936; border-radius: 10px; padding: 12px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <strong style="color: #f87171; font-size: 13px;">Quadro 3: Clímax / Showdown</strong>
+            <span style="background: rgba(248, 113, 113, 0.15); color: #fca5a5; font-size: 10.5px; padding: 2px 7px; border-radius: 8px; font-weight: 700;">Poder Máximo</span>
+          </div>
+
+          <label style="font-size: 11px; color: var(--text-muted); display: block; margin-bottom: 4px;">Cena da História:</label>
+          <select id="thumbCardSelect2" onchange="selecionarCardPainelThumb(2, this.value)" style="width: 100%; padding: 8px; background: #0c0e12; border: 1px solid #2e3646; color: #fff; border-radius: 6px; font-size: 12px; margin-bottom: 8px;"></select>
+
+          <label style="font-size: 11px; color: var(--text-muted); display: block; margin-bottom: 4px;">Gancho de Texto (2 a 3 palavras):</label>
+          <input type="text" id="thumbHookText2" value="Universe Protector" placeholder="Ex: Super Namek!" oninput="renderizarThumbnailGokuCanvas()" style="width: 100%; padding: 8px; background: #0c0e12; border: 1px solid #2e3646; color: #fff; border-radius: 6px; font-size: 13px; font-weight: 700; margin-bottom: 8px;">
+
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+            <label style="font-size: 11px; color: var(--text-muted);">Enquadramento Vertical:</label>
+            <span id="thumbOffsetYVal2" style="font-size: 11px; color: #94a3b8;">50%</span>
+          </div>
+          <input type="range" id="thumbOffsetY2" min="0" max="100" value="50" oninput="ajustarOffsetPainelThumb(2, this.value)" style="width: 100%; margin-bottom: 8px;">
+
+          <div style="display: flex; gap: 6px;">
+            <input type="file" id="thumbCustomImg2" accept="image/*" style="display:none;" onchange="carregarImagemCustomThumb(2, event)">
+            <button type="button" class="btn-secondary" style="font-size: 11px; padding: 5px 8px; flex: 1;" onclick="document.getElementById('thumbCustomImg2').click()">📁 Usar Imagem Própria</button>
+            <button type="button" class="btn-secondary" style="font-size: 11px; padding: 5px 8px;" onclick="resetarImagemCustomThumb(2)" title="Voltar para a cena da história">↺</button>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- OPÇÕES DE ESTILO (FONTE E CORES) -->
+      <div style="display: flex; flex-wrap: wrap; gap: 14px; background: #11141b; border: 1px solid #1f242e; border-radius: 10px; padding: 12px; margin-bottom: 20px; align-items: center;">
+        <div style="flex: 1; min-width: 180px;">
+          <label style="font-size: 11.5px; color: var(--text-muted); display: block; margin-bottom: 4px;">Tipografia do Gancho:</label>
+          <select id="thumbFontSelect" onchange="renderizarThumbnailGokuCanvas()" style="width: 100%; padding: 7px; background: #0c0e12; border: 1px solid #2e3646; color: #fff; border-radius: 6px; font-size: 12.5px;">
+            <option value="'Fredoka', sans-serif" selected>Fredoka (Oficial Goku Show - Arredondada & Punchy)</option>
+            <option value="'Nunito', sans-serif">Nunito (Moderna Goku Show - Extra Bold)</option>
+            <option value="'Montserrat', sans-serif">Montserrat (Dragon Ball Z Heavy)</option>
+          </select>
+        </div>
+
+        <div style="flex: 1; min-width: 180px;">
+          <label style="font-size: 11.5px; color: var(--text-muted); display: block; margin-bottom: 4px;">Linhas Separadoras:</label>
+          <select id="thumbBorderSelect" onchange="renderizarThumbnailGokuCanvas()" style="width: 100%; padding: 7px; background: #0c0e12; border: 1px solid #2e3646; color: #fff; border-radius: 6px; font-size: 12.5px;">
+            <option value="#ffffff" selected>Branco Puro (Padrão Goku Show)</option>
+            <option value="#f59e0b">Dourado Super Saiyan (#f59e0b)</option>
+            <option value="none">Sem Linhas Separadoras</option>
+          </select>
+        </div>
+
+        <div style="flex: 1; min-width: 180px;">
+          <label style="font-size: 11.5px; color: var(--text-muted); display: block; margin-bottom: 4px;">Altura da Barra Inferior:</label>
+          <select id="thumbBarHeightSelect" onchange="renderizarThumbnailGokuCanvas()" style="width: 100%; padding: 7px; background: #0c0e12; border: 1px solid #2e3646; color: #fff; border-radius: 6px; font-size: 12.5px;">
+            <option value="208" selected>Padrão Goku Show (~28% - 208px)</option>
+            <option value="175">Compacta (~24% - 175px)</option>
+            <option value="235">Grande / Mais Espaço (~32% - 235px)</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- BOTÕES DE EXPORTAÇÃO E DOWNLOAD -->
+      <div style="display: flex; flex-wrap: wrap; gap: 10px; justify-content: flex-end; align-items: center;">
+        <button type="button" class="btn-secondary" style="padding: 11px 18px;" onclick="fecharModalThumbnailGokuShow()">
+          Fechar
+        </button>
+        <button type="button" class="btn-secondary" style="padding: 11px 18px; border-color: #3b82f6; color: #60a5fa;" onclick="copiarThumbnailGokuShow()">
+          📋 Copiar Imagem
+        </button>
+        <button type="button" class="btn-secondary" style="padding: 11px 18px;" onclick="baixarThumbnailGokuShow('png')">
+          ⬇️ Baixar PNG
+        </button>
+        <button type="button" class="btn-thumb-goku" style="padding: 12px 24px; font-size: 14.5px;" onclick="baixarThumbnailGokuShow('jpg')">
+          🚀 Baixar Thumbnail Oficial (1280x720 JPG)
+        </button>
+      </div>
+
     </div>
   </div>
 
@@ -3050,6 +3260,508 @@ Prompt: Two round white pods shooting through outer space as a colossal crimson 
       dispararAutoSave();
 
       mostrarToast("✨ Novo Projeto criado com sucesso! Comece sua nova história.");
+    }
+
+    /* ========================================================
+       CRIADOR DE THUMBNAIL PROFISSIONAL (ESTILO OFICIAL GOKU SHOW 16:9)
+       ======================================================== */
+    let thumbState = {
+      panels: [
+        { cardIndex: 0, customImage: null, hook: "Best Friends?", offsetY: 0.5 },
+        { cardIndex: 1, customImage: null, hook: "The Ultimate Duo!", offsetY: 0.5 },
+        { cardIndex: 2, customImage: null, hook: "Universe Protector", offsetY: 0.5 }
+      ],
+      imgElementsCache: {}
+    };
+
+    function abrirModalThumbnailGokuShow() {
+      const modal = document.getElementById('modalThumbnailGokuShow');
+      if (!modal) return;
+
+      // Popula selects de cards
+      atualizarSelectsCardsThumbnail();
+
+      // Se temos cards e os índices padrão não foram ajustados pelo usuário
+      if (cards && cards.length > 0) {
+        const n = cards.length;
+        if (thumbState.panels[0].cardIndex >= n) thumbState.panels[0].cardIndex = 0;
+        if (thumbState.panels[1].cardIndex >= n) thumbState.panels[1].cardIndex = Math.min(n - 1, Math.floor(n / 2));
+        if (thumbState.panels[2].cardIndex >= n) thumbState.panels[2].cardIndex = Math.max(0, n - 1);
+
+        // Atualiza selects nos inputs
+        for (let i = 0; i < 3; i++) {
+          const sel = document.getElementById(`thumbCardSelect${i}`);
+          if (sel) sel.value = thumbState.panels[i].cardIndex;
+          const inp = document.getElementById(`thumbHookText${i}`);
+          if (inp && thumbState.panels[i].hook) inp.value = thumbState.panels[i].hook;
+          const rng = document.getElementById(`thumbOffsetY${i}`);
+          if (rng) rng.value = Math.round(thumbState.panels[i].offsetY * 100);
+          const lbl = document.getElementById(`thumbOffsetYVal${i}`);
+          if (lbl) lbl.innerText = `${Math.round(thumbState.panels[i].offsetY * 100)}%`;
+        }
+      }
+
+      modal.style.display = 'flex';
+      setTimeout(() => {
+        renderizarThumbnailGokuCanvas();
+      }, 50);
+    }
+
+    function fecharModalThumbnailGokuShow() {
+      const modal = document.getElementById('modalThumbnailGokuShow');
+      if (modal) modal.style.display = 'none';
+    }
+
+    function atualizarSelectsCardsThumbnail() {
+      for (let i = 0; i < 3; i++) {
+        const select = document.getElementById(`thumbCardSelect${i}`);
+        if (!select) continue;
+        select.innerHTML = '';
+        if (!cards || cards.length === 0) {
+          const opt = document.createElement('option');
+          opt.value = 0;
+          opt.innerText = 'Nenhuma cena criada ainda';
+          select.appendChild(opt);
+          continue;
+        }
+
+        cards.forEach((card, idx) => {
+          const opt = document.createElement('option');
+          opt.value = idx;
+          const resumo = (card.text || card.title || `Cena ${idx + 1}`).substring(0, 32);
+          opt.innerText = `${card.title || `Cena ${idx + 1}`}: ${resumo}${card.text && card.text.length > 32 ? '...' : ''}`;
+          select.appendChild(opt);
+        });
+
+        if (thumbState.panels[i].cardIndex < cards.length) {
+          select.value = thumbState.panels[i].cardIndex;
+        }
+      }
+    }
+
+    function selecionarCardPainelThumb(panelIndex, cardIndexVal) {
+      const idx = parseInt(cardIndexVal, 10) || 0;
+      thumbState.panels[panelIndex].cardIndex = idx;
+      thumbState.panels[panelIndex].customImage = null;
+      renderizarThumbnailGokuCanvas();
+    }
+
+    function ajustarOffsetPainelThumb(panelIndex, val) {
+      const v = parseInt(val, 10);
+      thumbState.panels[panelIndex].offsetY = v / 100;
+      const lbl = document.getElementById(`thumbOffsetYVal${panelIndex}`);
+      if (lbl) lbl.innerText = `${v}%`;
+      renderizarThumbnailGokuCanvas();
+    }
+
+    function carregarImagemCustomThumb(panelIndex, event) {
+      const file = event.target.files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        thumbState.panels[panelIndex].customImage = e.target.result;
+        renderizarThumbnailGokuCanvas();
+        mostrarToast(`🖼️ Imagem personalizada carregada para o Quadro ${panelIndex + 1}!`);
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function resetarImagemCustomThumb(panelIndex) {
+      thumbState.panels[panelIndex].customImage = null;
+      renderizarThumbnailGokuCanvas();
+      mostrarToast(`↺ Quadro ${panelIndex + 1} voltou para a cena da história.`);
+    }
+
+    // DIVISÃO INTELIGENTE DE TEXTO NO ESTILO GOKU SHOW (1 OU 2 LINHAS PUNCHY)
+    function quebrarTextoGokuShow(texto) {
+      if (!texto || !texto.trim()) return [];
+      if (texto.includes('\n')) {
+        return texto.split('\n').map(l => l.trim()).filter(Boolean);
+      }
+      const words = texto.trim().split(/\s+/);
+      if (words.length <= 1) return [texto.trim()];
+      if (words.length === 2) return [words[0], words[1]];
+      if (words.length === 3) return [words[0] + ' ' + words[1], words[2]];
+      const mid = Math.ceil(words.length / 2);
+      return [words.slice(0, mid).join(' '), words.slice(mid).join(' ')];
+    }
+
+    // DRAW IMAGE COVER COM AJUSTE VERTICAL EM CANVAS
+    function desenharImagemCoverCanvas(ctx, img, dx, dy, dw, dh, offsetY = 0.5) {
+      if (!img) return;
+      const imgW = img.naturalWidth || img.width;
+      const imgH = img.naturalHeight || img.height;
+      if (!imgW || !imgH) return;
+
+      const targetRatio = dw / dh;
+      const imgRatio = imgW / imgH;
+
+      let sx = 0, sy = 0, sWidth = imgW, sHeight = imgH;
+
+      if (imgRatio > targetRatio) {
+        sHeight = imgH;
+        sWidth = imgH * targetRatio;
+        sx = (imgW - sWidth) / 2;
+        sy = 0;
+      } else {
+        sWidth = imgW;
+        sHeight = imgW / targetRatio;
+        sx = 0;
+        const maxOffset = Math.max(0, imgH - sHeight);
+        sy = maxOffset * Math.max(0, Math.min(1, offsetY));
+      }
+
+      ctx.drawImage(img, sx, sy, sWidth, sHeight, dx, dy, dw, dh);
+    }
+
+    // CARREGA IMAGEM EM ELEMENTO IMG (CACHEADO)
+    function obterElementoImagemAsync(src) {
+      if (!src) return Promise.resolve(null);
+      if (thumbState.imgElementsCache[src]) {
+        const cached = thumbState.imgElementsCache[src];
+        if (cached.complete) return Promise.resolve(cached);
+      }
+      return new Promise((resolve) => {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = () => {
+          thumbState.imgElementsCache[src] = img;
+          resolve(img);
+        };
+        img.onerror = () => resolve(null);
+        img.src = src;
+      });
+    }
+
+    // RENDERIZAÇÃO COMPLETA DA THUMBNAIL (1280x720) NO CANVAS
+    async function renderizarThumbnailGokuCanvas() {
+      const canvas = document.getElementById('canvasGokuThumb');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+
+      // Lê configurações da interface
+      const fontSelect = document.getElementById('thumbFontSelect');
+      const fontFamily = fontSelect ? fontSelect.value : "'Fredoka', sans-serif";
+      const borderSelect = document.getElementById('thumbBorderSelect');
+      const borderColor = borderSelect ? borderSelect.value : '#ffffff';
+      const barHeightSelect = document.getElementById('thumbBarHeightSelect');
+      const barHeight = barHeightSelect ? (parseInt(barHeightSelect.value, 10) || 208) : 208;
+
+      // Atualiza indicador de fonte
+      const fontInd = document.getElementById('thumbFontIndicator');
+      if (fontInd) {
+        fontInd.innerText = fontFamily.includes('Fredoka') ? 'Fredoka 800 (Oficial)' : (fontFamily.includes('Nunito') ? 'Nunito 900' : 'Montserrat 800');
+      }
+
+      // Lê textos dos inputs
+      for (let i = 0; i < 3; i++) {
+        const inp = document.getElementById(`thumbHookText${i}`);
+        if (inp) thumbState.panels[i].hook = inp.value;
+      }
+
+      const W = 1280;
+      const H = 720;
+      const topH = H - barHeight;
+      const sepW = (borderColor === 'none') ? 0 : 4;
+      const colW = Math.floor((W - (2 * sepW)) / 3); // 424px
+
+      // Limpa fundo em preto absoluto
+      ctx.fillStyle = '#000000';
+      ctx.fillRect(0, 0, W, H);
+
+      // Colunas
+      const colXPositions = [
+        0,
+        colW + sepW,
+        (colW * 2) + (sepW * 2)
+      ];
+
+      // 1. Renderiza imagens nos 3 quadros
+      for (let i = 0; i < 3; i++) {
+        const panel = thumbState.panels[i];
+        const colX = colXPositions[i];
+        let imgSrc = panel.customImage;
+
+        if (!imgSrc && cards && cards[panel.cardIndex]) {
+          imgSrc = cards[panel.cardIndex].image;
+        }
+
+        if (imgSrc) {
+          const imgEl = await obterElementoImagemAsync(imgSrc);
+          if (imgEl) {
+            ctx.imageSmoothingEnabled = true;
+            ctx.imageSmoothingQuality = 'high';
+            desenharImagemCoverCanvas(ctx, imgEl, colX, 0, colW, topH, panel.offsetY);
+          } else {
+            desenharPlaceholderPainel(ctx, colX, 0, colW, topH, i);
+          }
+        } else {
+          desenharPlaceholderPainel(ctx, colX, 0, colW, topH, i);
+        }
+      }
+
+      // 2. Renderiza a barra preta inferior sólida
+      ctx.fillStyle = '#000000';
+      ctx.fillRect(0, topH, W, barHeight);
+
+      // 3. Renderiza linhas separadoras brancas (estilo Goku Show)
+      if (borderColor !== 'none') {
+        ctx.fillStyle = borderColor;
+        // Linha horizontal
+        ctx.fillRect(0, topH - Math.floor(sepW / 2), W, sepW);
+        // Linhas verticais que cruzam toda a thumbnail do topo até o rodapé
+        ctx.fillRect(colW, 0, sepW, H);
+        ctx.fillRect((colW * 2) + sepW, 0, sepW, H);
+      }
+
+      // 4. Renderiza os ganchos de texto de alto impacto
+      const cy = topH + (barHeight / 2);
+      const maxW = colW - 28; // margem interna confortável
+
+      for (let i = 0; i < 3; i++) {
+        const cx = colXPositions[i] + (colW / 2);
+        const hookText = thumbState.panels[i].hook || '';
+        desenharTextoGokuShow(ctx, hookText, cx, cy, maxW, fontFamily);
+      }
+    }
+
+    function desenharPlaceholderPainel(ctx, x, y, w, h, index) {
+      ctx.fillStyle = '#161a23';
+      ctx.fillRect(x, y, w, h);
+      ctx.fillStyle = '#475569';
+      ctx.font = '700 24px Montserrat, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(`Quadro ${index + 1}`, x + (w / 2), y + (h / 2) - 14);
+      ctx.font = '500 13px sans-serif';
+      ctx.fillStyle = '#94a3b8';
+      ctx.fillText('Selecione uma cena ou imagem', x + (w / 2), y + (h / 2) + 16);
+    }
+
+    function desenharTextoGokuShow(ctx, texto, cx, cy, maxW, fontFamily) {
+      if (!texto || !texto.trim()) return;
+
+      const lines = quebrarTextoGokuShow(texto);
+      if (lines.length === 0) return;
+
+      ctx.fillStyle = '#ffffff';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+
+      // Tipografia dinâmica proporcional
+      let fontSize = lines.length === 1 ? 52 : (lines.length === 2 ? 46 : 38);
+      ctx.font = `800 ${fontSize}px ${fontFamily}`;
+
+      // Ajusta tamanho da fonte se exceder a largura máxima do quadro
+      for (const l of lines) {
+        let textWidth = ctx.measureText(l).width;
+        while (textWidth > maxW && fontSize > 20) {
+          fontSize -= 2;
+          ctx.font = `800 ${fontSize}px ${fontFamily}`;
+          textWidth = ctx.measureText(l).width;
+        }
+      }
+
+      const lineHeight = fontSize * 1.15;
+      if (lines.length === 1) {
+        ctx.fillText(lines[0], cx, cy);
+      } else if (lines.length === 2) {
+        const y1 = cy - (lineHeight * 0.52);
+        const y2 = cy + (lineHeight * 0.52);
+        ctx.fillText(lines[0], cx, y1);
+        ctx.fillText(lines[1], cx, y2);
+      } else {
+        const totalHeight = lines.length * lineHeight;
+        const startY = cy - (totalHeight / 2) + (lineHeight / 2);
+        lines.forEach((l, idx) => {
+          ctx.fillText(l, cx, startY + (idx * lineHeight));
+        });
+      }
+    }
+
+    // IDENTIFICAÇÃO DAS MELHORES CENAS COM IA (GOKU SHOW STORY ANALYZER)
+    async function identificarMelhoresCenasComIA() {
+      if (!cards || cards.length === 0) {
+        mostrarToast("Crie ou cole seu roteiro com cenas primeiro para a IA analisar!", true);
+        return;
+      }
+
+      const statusArea = document.getElementById('thumbAiStatusArea');
+      const statusText = document.getElementById('thumbAiStatusText');
+      const btnAnalyze = document.getElementById('btnThumbAiAnalyze');
+
+      if (statusArea) statusArea.style.display = 'block';
+      if (btnAnalyze) btnAnalyze.disabled = true;
+
+      const activeKey = serverEnvConfig.apiKey || localStorage.getItem('matawas_gemini_api_key') || '';
+      let resultado = null;
+
+      if (activeKey) {
+        try {
+          if (statusText) statusText.innerText = "🧠 Analisando narrativa dramática com Google Gemini...";
+          const llmModel = serverEnvConfig.llmModel || 'gemini-2.5-flash';
+          const url = `https://generativelanguage.googleapis.com/v1beta/models/${llmModel}:generateContent?key=${activeKey}`;
+
+          const resumoHistoria = cards.map((c, i) => 
+            `[Cena ${i + 1}]
+Legenda: ${c.text || ''}
+Visual: ${c._promptOriginal || ''}`
+          ).join('\n\n');
+
+          const promptInstrucao = `Você é o estrategista oficial de thumbnails virais para canais de Dragon Ball "What If" no estilo exato do canal Goku Show.
+Analise a história a seguir que contém ${cards.length} cenas:
+
+${resumoHistoria}
+
+Sua missão é escolher EXATAMENTE 3 CENAS para a Thumbnail oficial de 3 quadros (16:9) do Goku Show:
+1. Quadro 1 (Início/Origem/Gancho): Momento inicial impactante, premissa inusitada ou nascimento/origem (ex: "Namekian Goku", "Best Friends?", "Rebel Father!").
+2. Quadro 2 (Reviravolta/Vínculo/Conflito): Reviravolta chocante, interação inesperada entre personagens, pacto ou momento dramático (ex: "The Ultimate Duo!", "Unexpected Love", "Brothers' Vow!").
+3. Quadro 3 (Clímax/Poder Máximo/Showdown): Batalha decisiva, transformação super saiyan, explosão ou destruição épica (ex: "Super Namek!", "Universe Protector", "Planet Explodes!").
+
+Para cada um dos 3 quadros, forneça:
+- cardIndex: o índice da cena (inteiro de 0 a ${cards.length - 1})
+- gancho: um gancho de no MÁXIMO 2 a 3 palavras no estilo exato do Goku Show, com '?' ou '!'.
+
+Retorne ESTRITAMENTE um JSON válido com a estrutura:
+{
+  "painel1": { "cardIndex": 0, "gancho": "..." },
+  "painel2": { "cardIndex": 1, "gancho": "..." },
+  "painel3": { "cardIndex": 2, "gancho": "..." }
+}`;
+
+          const resp = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [{ parts: [{ text: promptInstrucao }] }]
+            })
+          });
+
+          const data = await resp.json();
+          const respostaTexto = data.candidates?.[0]?.content?.parts?.[0]?.text;
+          if (respostaTexto) {
+            const limpo = respostaTexto.replace(/```json/g, '').replace(/```/g, '').trim();
+            resultado = JSON.parse(limpo);
+          }
+        } catch (err) {
+          console.warn("IA Gemini para Thumbnail encontrou erro, usando analisador heurístico:", err);
+        }
+      }
+
+      // Se não tem chave ou a IA falhou, usa o analisador heurístico de alto impacto
+      if (!resultado || !resultado.painel1 || !resultado.painel2 || !resultado.painel3) {
+        if (statusText) statusText.innerText = "⚡ Identificando melhores cenas pelo fluxo narrativo...";
+        resultado = analisarNarrativaHeuristicaGokuShow(cards);
+      }
+
+      // Aplica os resultados nos 3 painéis
+      if (resultado && resultado.painel1 && resultado.painel2 && resultado.painel3) {
+        thumbState.panels[0].cardIndex = Math.max(0, Math.min(cards.length - 1, resultado.painel1.cardIndex || 0));
+        thumbState.panels[0].hook = resultado.painel1.gancho || "Best Friends?";
+        thumbState.panels[0].customImage = null;
+
+        thumbState.panels[1].cardIndex = Math.max(0, Math.min(cards.length - 1, resultado.painel2.cardIndex || Math.floor(cards.length / 2)));
+        thumbState.panels[1].hook = resultado.painel2.gancho || "The Ultimate Duo!";
+        thumbState.panels[1].customImage = null;
+
+        thumbState.panels[2].cardIndex = Math.max(0, Math.min(cards.length - 1, resultado.painel3.cardIndex || (cards.length - 1)));
+        thumbState.panels[2].hook = resultado.painel3.gancho || "Universe Protector";
+        thumbState.panels[2].customImage = null;
+
+        // Atualiza campos na tela
+        for (let i = 0; i < 3; i++) {
+          const sel = document.getElementById(`thumbCardSelect${i}`);
+          if (sel) sel.value = thumbState.panels[i].cardIndex;
+          const inp = document.getElementById(`thumbHookText${i}`);
+          if (inp) inp.value = thumbState.panels[i].hook;
+        }
+
+        await renderizarThumbnailGokuCanvas();
+        mostrarToast("🔥 Thumbnail Goku Show gerada com sucesso pela IA!");
+      }
+
+      if (statusArea) statusArea.style.display = 'none';
+      if (btnAnalyze) btnAnalyze.disabled = false;
+    }
+
+    // ANALISADOR HEURÍSTICO OFFLINE (SELEÇÃO INTELIGENTE DE INÍCIO, MEIO E FIM)
+    function analisarNarrativaHeuristicaGokuShow(cenas) {
+      const n = cenas.length;
+      const idx1 = 0;
+      const idx2 = Math.min(n - 1, Math.max(0, Math.floor(n / 2)));
+      const idx3 = Math.max(0, n - 1);
+
+      function extrairGanchoHeuristico(cena, tipo) {
+        const txt = ((cena.title || '') + ' ' + (cena.text || '') + ' ' + (cena._promptOriginal || '')).toLowerCase();
+        if (tipo === 'inicio') {
+          if (txt.includes('frieza') || txt.includes('freeza')) return "Frieza's Secret?";
+          if (txt.includes('namek')) return "Namekian Goku";
+          if (txt.includes('saiyan') || txt.includes('bardock')) return "Rebel Saiyan?";
+          if (txt.includes('baby') || txt.includes('infant') || txt.includes('kakarot')) return "Saiyan Baby!";
+          if (txt.includes('vegeta')) return "Prince Vegeta?";
+          return "The Beginning?";
+        } else if (tipo === 'meio') {
+          if (txt.includes('brother') || txt.includes('raditz')) return "Brothers' Vow!";
+          if (txt.includes('friend') || txt.includes('duo') || txt.includes('alliance')) return "The Ultimate Duo!";
+          if (txt.includes('love') || txt.includes('weep') || txt.includes('tear') || txt.includes('gine')) return "Heartfelt Secret!";
+          if (txt.includes('train') || txt.includes('secret')) return "Hidden Power!";
+          return "Unexpected Twist!";
+        } else {
+          if (txt.includes('supernova') || txt.includes('planet') || txt.includes('explode')) return "Planet Explodes!";
+          if (txt.includes('super') || txt.includes('transformation')) return "Super Namek!";
+          if (txt.includes('escape') || txt.includes('pod') || txt.includes('cosmos')) return "Final Escape!";
+          if (txt.includes('protector') || txt.includes('universe') || txt.includes('save')) return "Universe Protector";
+          return "Final Showdown!";
+        }
+      }
+
+      return {
+        painel1: { cardIndex: idx1, gancho: extrairGanchoHeuristico(cenas[idx1], 'inicio') },
+        painel2: { cardIndex: idx2, gancho: extrairGanchoHeuristico(cenas[idx2], 'meio') },
+        painel3: { cardIndex: idx3, gancho: extrairGanchoHeuristico(cenas[idx3], 'fim') }
+      };
+    }
+
+    // DOWNLOAD DA THUMBNAIL EM ALTA DEFINIÇÃO (1280x720)
+    function baixarThumbnailGokuShow(formato = 'jpg') {
+      const canvas = document.getElementById('canvasGokuThumb');
+      if (!canvas) return;
+
+      const mimeType = formato === 'png' ? 'image/png' : 'image/jpeg';
+      const extensao = formato === 'png' ? 'png' : 'jpg';
+      const dataUrl = canvas.toDataURL(mimeType, 0.96);
+
+      const link = document.createElement('a');
+      link.download = `thumbnail_goku_show_1280x720.${extensao}`;
+      link.href = dataUrl;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      mostrarToast(`🚀 Thumbnail oficial (1280x720 .${extensao}) baixada com sucesso!`);
+    }
+
+    // COPIAR THUMBNAIL PARA A ÁREA DE TRANSFERÊNCIA
+    async function copiarThumbnailGokuShow() {
+      const canvas = document.getElementById('canvasGokuThumb');
+      if (!canvas) return;
+
+      try {
+        canvas.toBlob(async (blob) => {
+          if (!blob) {
+            mostrarToast("Erro ao gerar imagem para a área de transferência.", true);
+            return;
+          }
+          await navigator.clipboard.write([
+            new ClipboardItem({ 'image/png': blob })
+          ]);
+          mostrarToast("📋 Thumbnail copiada para a área de transferência! Pronta para colar no YouTube.");
+        }, 'image/png');
+      } catch (err) {
+        console.error(err);
+        mostrarToast("Seu navegador não suporta cópia direta de imagens. Use o botão de Baixar.", true);
+      }
     }
 
     // Inicialização
