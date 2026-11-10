@@ -124,10 +124,24 @@ def iniciar_servidor():
     import time
     time.sleep(0.5)
 
+    def obter_ip_local():
+        import socket
+        try:
+            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            s.connect(("8.8.8.8", 80))
+            ip = s.getsockname()[0]
+            s.close()
+            return ip
+        except Exception:
+            return "localhost"
+
+    ip_local = obter_ip_local()
+
     print("👉 Acesse localmente por qualquer um dos links:")
     for p in portas_ativas:
         print(f"   • http://localhost:{p}")
-        print(f"   • http://192.168.18.136:{p}")
+        if ip_local != "localhost":
+            print(f"   • http://{ip_local}:{p}")
 
     try:
         while True:
