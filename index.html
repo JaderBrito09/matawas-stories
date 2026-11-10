@@ -918,6 +918,40 @@
           ⏹️ Cancelar Renderização
         </button>
       </div>
+
+      <!-- Área de Sucesso com Player e Botões para Salvar no Fotos / Galeria -->
+      <div id="modalSuccessArea" style="display:none; text-align:center;">
+        <div style="font-size: 34px; margin-bottom: 6px;">🎉</div>
+        <h4 style="color:#2ed573; font-size:18px; margin:0 0 6px 0; font-weight:800;">Vídeo Concluído com Sucesso!</h4>
+        <p style="font-size:12.5px; color:#94a3b8; margin:0 0 12px 0;">Assista a prévia abaixo e toque no botão verde para guardar na sua Galeria:</p>
+
+        <!-- Player de Pré-visualização com suporte total a iOS/Android -->
+        <video id="videoPreviewResult" controls playsinline webkit-playsinline style="width:100%; max-height:240px; border-radius:10px; background:#000; border:1px solid #282f3a; margin-bottom:14px; object-fit:contain;"></video>
+
+        <!-- Botão Principal: Salvar Direto nas Fotos / Galeria -->
+        <button id="btnSalvarFotos" type="button" onclick="salvarVideoGaleriaFotos()" style="width:100%; padding:15px; font-size:15px; font-weight:800; background:linear-gradient(135deg, #2ed573, #10b981); color:#ffffff; border:none; border-radius:10px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px; box-shadow:0 4px 16px rgba(46,213,115,0.4); margin-bottom:10px;">
+          <span style="font-size:20px;">📱</span>
+          <span>SALVAR DIRETO NO FOTOS / GALERIA</span>
+        </button>
+
+        <!-- Botão Secundário: Baixar Arquivo MP4 -->
+        <button id="btnBaixarArquivo" type="button" onclick="baixarArquivoVideoDireto()" style="width:100%; padding:11px 16px; font-size:13.5px; font-weight:700; background:#1c1f26; color:#38bdf8; border:1px solid #333a47; border-radius:8px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px; margin-bottom:12px;">
+          <span style="font-size:16px;">💾</span>
+          <span>Baixar Arquivo MP4 (Downloads / Arquivos)</span>
+        </button>
+
+        <!-- Instruções claras de 1 toque para o usuário no celular -->
+        <div style="background:rgba(46, 213, 115, 0.09); border:1px solid rgba(46, 213, 115, 0.3); border-radius:8px; padding:10px 12px; font-size:12px; color:#2ed573; text-align:left; line-height:1.5;">
+          <strong>📱 Como vai para o Fotos no iPhone / Android:</strong><br>
+          1. Toque no botão verde acima <strong>"SALVAR DIRETO NO FOTOS"</strong>.<br>
+          2. Na janelinha que abrir na tela, escolha <strong>"Salvar Vídeo"</strong>.<br>
+          3. Pronto! Ele aparecerá imediatamente no seu aplicativo <strong>Fotos / Câmera</strong>.
+        </div>
+
+        <button class="btn-secondary" style="margin-top:14px; width:100%; padding:10px;" onclick="fecharModalExportarVideo()">
+          Fechar Janela
+        </button>
+      </div>
     </div>
   </div>
 
@@ -2716,17 +2750,86 @@ Prompt: Two round white pods shooting through outer space as a colossal crimson 
     document.getElementById('enableSubscribeCardOption')?.addEventListener('change', atualizarTempoEstimado);
     document.getElementById('videoEndScreenDuration')?.addEventListener('change', atualizarTempoEstimado);
 
+    let ultimoVideoGeradoBlob = null;
+    let ultimoVideoGeradoExtensao = 'mp4';
+    let ultimoVideoGeradoMime = 'video/mp4';
+    let ultimoVideoGeradoUrl = null;
+
     function abrirModalExportarVideo() {
       atualizarTempoEstimado();
       document.getElementById('modalTitle').innerText = 'Exportar Vídeo para o YouTube';
       document.getElementById('modalDesc').innerText = 'Gere o arquivo de vídeo pronto em 1080p Full HD com velocidade 100% constante.';
       document.getElementById('modalConfigForm').style.display = 'block';
       document.getElementById('modalProgressArea').style.display = 'none';
+      const successArea = document.getElementById('modalSuccessArea');
+      if (successArea) successArea.style.display = 'none';
+      const previewVideoEl = document.getElementById('videoPreviewResult');
+      if (previewVideoEl) {
+        previewVideoEl.pause();
+        previewVideoEl.removeAttribute('src');
+      }
       document.getElementById('videoModal').style.display = 'flex';
     }
 
     function fecharModalExportarVideo() {
+      const previewVideoEl = document.getElementById('videoPreviewResult');
+      if (previewVideoEl) {
+        previewVideoEl.pause();
+      }
       document.getElementById('videoModal').style.display = 'none';
+    }
+
+    async function salvarVideoGaleriaFotos() {
+      if (!ultimoVideoGeradoBlob) {
+        mostrarToast("Nenhum vídeo renderizado para salvar.", true);
+        return;
+      }
+
+      const cleanMime = ultimoVideoGeradoMime && ultimoVideoGeradoMime.includes('webm') ? 'video/webm' : 'video/mp4';
+      const ext = cleanMime === 'video/webm' ? 'webm' : 'mp4';
+      const fileName = `video_historia_${Date.now()}.${ext}`;
+      const videoFile = new File([ultimoVideoGeradoBlob], fileName, { type: cleanMime });
+
+      // No iPhone / Android: o navigator.share com arquivo aciona a folha nativa com "Salvar Vídeo" para o Fotos
+      if (navigator.canShare && navigator.canShare({ files: [videoFile] })) {
+        try {
+          await navigator.share({
+            title: "Vídeo Manga Stories",
+            text: "Salvar vídeo na Galeria de Fotos",
+            files: [videoFile]
+          });
+          mostrarToast("✓ Selecione 'Salvar Vídeo' na tela para guardar nas Fotos!");
+          return;
+        } catch (err) {
+          if (err.name === 'AbortError') {
+            return;
+          }
+          console.warn("navigator.share com arquivo falhou:", err);
+        }
+      }
+
+      // Fallback caso a Web Share API não suporte compartilhamento de arquivo no navegador atual:
+      baixarArquivoVideoDireto();
+    }
+
+    function baixarArquivoVideoDireto() {
+      if (!ultimoVideoGeradoBlob) {
+        mostrarToast("Nenhum vídeo renderizado.", true);
+        return;
+      }
+
+      const cleanMime = ultimoVideoGeradoMime && ultimoVideoGeradoMime.includes('webm') ? 'video/webm' : 'video/mp4';
+      const ext = cleanMime === 'video/webm' ? 'webm' : 'mp4';
+      const videoUrl = ultimoVideoGeradoUrl || URL.createObjectURL(ultimoVideoGeradoBlob);
+      const downloadLink = document.createElement('a');
+      downloadLink.href = videoUrl;
+      downloadLink.download = `video_historia_youtube_${Date.now()}.${ext}`;
+      document.body.appendChild(downloadLink);
+      downloadLink.click();
+      setTimeout(() => {
+        try { document.body.removeChild(downloadLink); } catch (e) {}
+      }, 600);
+      mostrarToast("✓ Download iniciado para a pasta Downloads/Arquivos!");
     }
 
     let gravacaoCancelada = false;
@@ -3267,45 +3370,50 @@ Prompt: Two round white pods shooting through outer space as a colossal crimson 
         return;
       }
 
-      statusText.innerText = "Preparando arquivo para a Galeria...";
-      progressFill.style.width = "98%";
+      // 5. Guarda o vídeo gerado e prepara interface interativa de salvamento
+      ultimoVideoGeradoBlob = videoBlob;
+      ultimoVideoGeradoExtensao = extensao;
+      ultimoVideoGeradoMime = mimeType;
 
-      // 5. Salvamento direto na Galeria de Fotos (Mobile: iOS / Android)
-      let salvoViaShare = false;
-      if (navigator.canShare) {
+      if (ultimoVideoGeradoUrl) {
+        URL.revokeObjectURL(ultimoVideoGeradoUrl);
+      }
+      ultimoVideoGeradoUrl = URL.createObjectURL(videoBlob);
+
+      // Conecta o arquivo ao Player de Pré-visualização com suporte total a iOS/Android
+      const previewVideoEl = document.getElementById('videoPreviewResult');
+      if (previewVideoEl) {
+        previewVideoEl.src = ultimoVideoGeradoUrl;
+        previewVideoEl.load();
+      }
+
+      // Transiciona imediatamente para a Área de Sucesso com o Player e os Botões
+      document.getElementById('modalProgressArea').style.display = 'none';
+      const successArea = document.getElementById('modalSuccessArea');
+      if (successArea) {
+        successArea.style.display = 'block';
+      }
+
+      mostrarToast("🎉 Vídeo 100% pronto! Toque no botão verde para Salvar no Fotos.");
+
+      // Tentativa imediata e suave no mobile caso o navegador aprove a janela nativa
+      if (navigator.canShare && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
         try {
-          const videoFile = new File([videoBlob], `video_historia_${Date.now()}.${extensao}`, { type: mimeType });
+          const cleanMime = mimeType.includes('webm') ? 'video/webm' : 'video/mp4';
+          const videoFile = new File([videoBlob], `video_historia_${Date.now()}.${extensao}`, { type: cleanMime });
           if (navigator.canShare({ files: [videoFile] })) {
-            statusText.innerText = "📱 Toque em 'Salvar Vídeo' para enviar para a Galeria de Fotos!";
             await navigator.share({
               title: "Vídeo Manga Stories",
               text: "Salvar vídeo na Galeria de Fotos",
               files: [videoFile]
             });
-            salvoViaShare = true;
-            mostrarToast("📱 Selecione 'Salvar Vídeo' na tela para guardar nas Fotos!");
+            mostrarToast("✓ Vídeo salvo! Escolha 'Salvar Vídeo' para ir ao Fotos.");
           }
-        } catch (err) {
-          console.log("Compartilhamento nativo cancelado pelo usuário ou fallback:", err);
+        } catch (e) {
+          // Normal no iOS aguardar o toque direto no botão verde
+          console.log("Auto-share aguardando clique manual do usuário:", e);
         }
       }
-
-      // Fallback para download clássico (Desktop ou navegadores sem Web Share)
-      if (!salvoViaShare) {
-        const videoUrl = URL.createObjectURL(videoBlob);
-        const downloadLink = document.createElement('a');
-        downloadLink.href = videoUrl;
-        downloadLink.download = `video_historia_youtube_${targetH}p.${extensao}`;
-        downloadLink.click();
-        mostrarToast(`✓ Vídeo baixado com sucesso! (${targetH}p ${extensao.toUpperCase()})`);
-      }
-
-      statusText.innerText = `✓ Concluído com sucesso!`;
-      progressFill.style.width = "100%";
-
-      setTimeout(() => {
-        fecharModalExportarVideo();
-      }, 2500);
     }
 
     /* ========================================================
