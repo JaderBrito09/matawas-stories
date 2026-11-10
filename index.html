@@ -892,6 +892,14 @@
         </div>
 
         <div class="video-config-row">
+          <label>Taxa de Quadros (Velocidade):</label>
+          <select id="videoFpsSelect" style="background:#111317; border:1px solid #333a47; color:#fbbf24; padding:6px 12px; border-radius:6px; font-weight:700; font-family:inherit;">
+            <option value="24" selected>24 FPS (Estilo Cinema/Anime - 20% Mais Rápido)</option>
+            <option value="30">30 FPS (Padrão YouTube 30 FPS)</option>
+          </select>
+        </div>
+
+        <div class="video-config-row">
           <label>Tempo Total Estimado:</label>
           <span id="estimatedDuration" style="font-weight:700; color:#ffa502; font-size:13px;">20 segundos</span>
         </div>
@@ -913,7 +921,7 @@
           <div class="progress-bar-fill" id="progressBarFill"></div>
         </div>
         <div class="progress-status" id="progressStatusText">Preparando imagens...</div>
-        <div style="margin-top: 10px; font-size: 11.5px; color: #2ed573; font-weight: 600;" id="memoryProtectionBadge">🛡️ Proteção de Memória Ativa (Uso contínuo &lt; 30MB)</div>
+        <div style="margin-top: 10px; font-size: 11.5px; color: #2ed573; font-weight: 600;" id="memoryProtectionBadge">⚡ Web Worker + OffscreenCanvas + Aceleração por Hardware Ativa</div>
         <button class="btn-secondary" style="margin-top: 16px; width: 100%; border-color: #ff4757; color: #ff4757; font-weight: 700; padding: 10px;" onclick="cancelarGravacaoVideo()">
           ⏹️ Cancelar Renderização
         </button>
@@ -2641,6 +2649,54 @@ Prompt: Two round white pods shooting through outer space as a colossal crimson 
       await Promise.all(promises);
     }
 
+    /* PRÉ-RENDERIZAÇÃO E CACHE DE BITMAPS (Zero recalculação de textos e fontes por frame) */
+    async function preRenderizarBitmapsCards(listaCards = cards) {
+      const cardW = 620;
+      const cardH = 1040;
+      const offCanvas = (typeof OffscreenCanvas !== 'undefined')
+        ? new OffscreenCanvas(cardW, cardH)
+        : document.createElement('canvas');
+      offCanvas.width = cardW;
+      offCanvas.height = cardH;
+      const offCtx = offCanvas.getContext('2d');
+
+      const txtH = Math.round(cardH * 0.34);
+      const txtCanvas = (typeof OffscreenCanvas !== 'undefined')
+        ? new OffscreenCanvas(cardW, txtH)
+        : document.createElement('canvas');
+      txtCanvas.width = cardW;
+      txtCanvas.height = txtH;
+      const txtCtx = txtCanvas.getContext('2d');
+
+      for (const card of listaCards) {
+        if (!card._cachedBitmap) {
+          offCtx.clearRect(0, 0, cardW, cardH);
+          desenharSlotImagem(offCtx, card, 0, 0, cardW, cardH, 1, 1);
+          desenharSlotTexto(offCtx, card, 0, 0, cardW, cardH, 1);
+
+          if (typeof createImageBitmap === 'function') {
+            try {
+              card._cachedBitmap = await createImageBitmap(offCanvas);
+            } catch (e) {
+              card._cachedBitmap = null;
+            }
+          }
+        }
+
+        if (!card._cachedTxtBitmap) {
+          txtCtx.clearRect(0, 0, cardW, txtH);
+          desenharSlotTexto(txtCtx, card, 0, -(cardH * 0.66), cardW, cardH, 1);
+          if (typeof createImageBitmap === 'function') {
+            try {
+              card._cachedTxtBitmap = await createImageBitmap(txtCanvas);
+            } catch (e) {
+              card._cachedTxtBitmap = null;
+            }
+          }
+        }
+      }
+    }
+
     /* RENDERIZAÇÃO VIRTUALIZADA EM TEMPO REAL DA ESTEIRA (Zero consumo de VRAM, suporta centenas de cards) */
     function desenharQuadroEsteira(outCtx, cards, currentScrollX) {
       outCtx.fillStyle = '#0f1013';
@@ -2662,8 +2718,12 @@ Prompt: Two round white pods shooting through outer space as a colossal crimson 
       for (let i = firstIndex; i <= lastIndex; i++) {
         const cardX = Math.round((margin + i * step) - currentScrollX);
         if (cardX + cardW >= -20 && cardX <= 1940) {
-          desenharSlotImagem(outCtx, cards[i], cardX, 20, cardW, cardH, 1, 1);
-          desenharSlotTexto(outCtx, cards[i], cardX, 20, cardW, cardH, 1);
+          if (cards[i]._cachedBitmap) {
+            outCtx.drawImage(cards[i]._cachedBitmap, cardX, 20);
+          } else {
+            desenharSlotImagem(outCtx, cards[i], cardX, 20, cardW, cardH, 1, 1);
+            desenharSlotTexto(outCtx, cards[i], cardX, 20, cardW, cardH, 1);
+          }
         }
       }
     }
@@ -2832,10 +2892,14 @@ Prompt: Two round white pods shooting through outer space as a colossal crimson 
       mostrarToast("✓ Download iniciado para a pasta Downloads/Arquivos!");
     }
 
+    let activeVideoWorker = null;
     let gravacaoCancelada = false;
 
     function cancelarGravacaoVideo() {
       gravacaoCancelada = true;
+      if (activeVideoWorker) {
+        try { activeVideoWorker.postMessage({ type: 'cancel' }); } catch (e) {}
+      }
       const statusText = document.getElementById('progressStatusText');
       if (statusText) statusText.innerText = "⏹️ Cancelando e liberando memória...";
       mostrarToast("Renderização cancelada.");
@@ -2949,7 +3013,7 @@ Prompt: Two round white pods shooting through outer space as a colossal crimson 
         try { wakeLock = await navigator.wakeLock.request('screen'); } catch (e) {}
       }
 
-      statusText.innerText = "1/3: Sincronizando imagens e fontes tipográficas...";
+      statusText.innerText = "1/3: Sincronizando e pré-renderizando cards acelerados por hardware...";
       progressFill.style.width = "10%";
       if (document.fonts) {
         try { await document.fonts.ready; } catch (e) {}
@@ -2967,6 +3031,7 @@ Prompt: Two round white pods shooting through outer space as a colossal crimson 
       }
 
       await precarregarTodasImagens(cardsParaVideo);
+      await preRenderizarBitmapsCards(cardsParaVideo);
 
       if (gravacaoCancelada) {
         fecharModalExportarVideo();
@@ -3014,12 +3079,19 @@ Prompt: Two round white pods shooting through outer space as a colossal crimson 
       const extraScrollW = endScreenDur > 0 ? Math.round(cardW * 2 + gap) : 0;
       const maxDeslocamento = Math.max(0, totalFaixaW - 1920 + extraScrollW);
 
-      const fps = 30;
+      const fps = parseInt(document.getElementById('videoFpsSelect')?.value || '24', 10);
       const totalFrames = Math.round(duracaoTotal * fps);
 
-      const outCanvas = document.getElementById('videoRenderCanvas');
-      outCanvas.width = targetW;
-      outCanvas.height = targetH;
+      // OffscreenCanvas para máxima velocidade sem engasgos de reflow na DOM
+      let outCanvas = null;
+      if (typeof OffscreenCanvas !== 'undefined') {
+        try { outCanvas = new OffscreenCanvas(targetW, targetH); } catch (e) {}
+      }
+      if (!outCanvas) {
+        outCanvas = document.getElementById('videoRenderCanvas');
+        outCanvas.width = targetW;
+        outCanvas.height = targetH;
+      }
       const outCtx = outCanvas.getContext('2d', { alpha: false });
 
       // Função de renderização com escala automática
@@ -3054,7 +3126,7 @@ Prompt: Two round white pods shooting through outer space as a colossal crimson 
       let extensao = 'mp4';
       let mimeType = 'video/mp4';
 
-      // 3. TENTATIVA COM WEBCODECS + MP4-MUXER (Com Backpressure e Limite Estrito de Memória < 30MB)
+      // 3. TENTATIVA COM WEBCODECS + MP4-MUXER (Web Worker ou OffscreenCanvas com prefer-hardware)
       let usouWebCodecs = false;
       const suportaWebCodecs = typeof window.VideoEncoder === 'function' && typeof window.Mp4Muxer !== 'undefined';
 
@@ -3075,8 +3147,46 @@ Prompt: Two round white pods shooting through outer space as a colossal crimson 
 
           let codecValido = null;
           let usarAvcConfig = false;
+          let usarHardwareAccel = false;
 
           for (const c of codecsCandidatos) {
+            // A. Testar com aceleração por hardware explícita ('prefer-hardware')
+            try {
+              const checkHwAvc = await VideoEncoder.isConfigSupported({
+                codec: c,
+                width: targetW,
+                height: targetH,
+                bitrate: targetBitrate,
+                framerate: fps,
+                hardwareAcceleration: 'prefer-hardware',
+                avc: { format: 'avc' }
+              });
+              if (checkHwAvc && checkHwAvc.supported) {
+                codecValido = c;
+                usarAvcConfig = true;
+                usarHardwareAccel = true;
+                break;
+              }
+            } catch (e) {}
+
+            try {
+              const checkHwBasic = await VideoEncoder.isConfigSupported({
+                codec: c,
+                width: targetW,
+                height: targetH,
+                bitrate: targetBitrate,
+                framerate: fps,
+                hardwareAcceleration: 'prefer-hardware'
+              });
+              if (checkHwBasic && checkHwBasic.supported) {
+                codecValido = c;
+                usarAvcConfig = false;
+                usarHardwareAccel = true;
+                break;
+              }
+            } catch (e) {}
+
+            // B. Fallback padrão sem forçar hardware
             try {
               const checkWithAvc = await VideoEncoder.isConfigSupported({
                 codec: c,
@@ -3089,6 +3199,7 @@ Prompt: Two round white pods shooting through outer space as a colossal crimson 
               if (checkWithAvc && checkWithAvc.supported) {
                 codecValido = c;
                 usarAvcConfig = true;
+                usarHardwareAccel = false;
                 break;
               }
             } catch (e) {}
@@ -3104,13 +3215,90 @@ Prompt: Two round white pods shooting through outer space as a colossal crimson 
               if (checkBasic && checkBasic.supported) {
                 codecValido = c;
                 usarAvcConfig = false;
+                usarHardwareAccel = false;
                 break;
               }
             } catch (e) {}
           }
 
-          if (codecValido) {
-            statusText.innerText = `2/3: Inicializando codificador MP4 (${targetW}x${targetH} ${codecValido})...`;
+          let usouWorkerComSucesso = false;
+
+          // Tentativa A: Web Worker em segundo plano (CPU separada, zero travamento de UI)
+          if (window.Worker && codecValido) {
+            try {
+              statusText.innerText = `2/3: Inicializando Web Worker com aceleração por hardware (${codecValido})...`;
+              progressFill.style.width = "15%";
+
+              const worker = new Worker('video_worker.js');
+              activeVideoWorker = worker;
+
+              const cardsData = cardsParaVideo.map(c => ({
+                bitmap: c._cachedBitmap,
+                txtBitmap: c._cachedTxtBitmap
+              }));
+
+              let planarAudioData = null;
+              if (audioBufferVideo) {
+                const totalSamples = audioBufferVideo.length;
+                planarAudioData = new Float32Array(totalSamples * 2);
+                const ch0 = audioBufferVideo.getChannelData(0);
+                const ch1 = audioBufferVideo.numberOfChannels > 1 ? audioBufferVideo.getChannelData(1) : ch0;
+                planarAudioData.set(ch0, 0);
+                planarAudioData.set(ch1, totalSamples);
+              }
+
+              const workerPromise = new Promise((resolve, reject) => {
+                worker.onmessage = (evt) => {
+                  const m = evt.data;
+                  if (!m) return;
+                  if (m.type === 'progress') {
+                    progressFill.style.width = `${m.pct}%`;
+                    statusText.innerText = `Renderizando [Worker Acelerado]: ${Math.round((m.frame/m.totalFrames)*100)}% (${m.tempoAtual.toFixed(1)}s / ${m.duracaoTotal.toFixed(1)}s)`;
+                  } else if (m.type === 'status') {
+                    statusText.innerText = m.text;
+                  } else if (m.type === 'done') {
+                    resolve(new Blob([m.buffer], { type: 'video/mp4' }));
+                  } else if (m.type === 'error') {
+                    reject(new Error(m.error));
+                  } else if (m.type === 'cancelled') {
+                    reject(new Error('CANCELLED'));
+                  }
+                };
+                worker.onerror = (err) => reject(err);
+              });
+
+              worker.postMessage({
+                type: 'start',
+                targetW, targetH, fps, targetBitrate, duracaoTotal, totalFrames,
+                cardsData, cardW, cardH, gap, margin,
+                enableIntro, introDur, scrollCardsDur, maxDeslocamento,
+                planarAudioData, sampleRate: audioBufferVideo ? audioBufferVideo.sampleRate : 44100,
+                codecValido, usarAvcConfig, usarHardwareAccel
+              });
+
+              videoBlob = await workerPromise;
+              worker.terminate();
+              activeVideoWorker = null;
+              extensao = 'mp4';
+              mimeType = 'video/mp4';
+              usouWebCodecs = true;
+              usouWorkerComSucesso = true;
+            } catch (wErr) {
+              if (activeVideoWorker) {
+                try { activeVideoWorker.terminate(); } catch (e) {}
+                activeVideoWorker = null;
+              }
+              if (wErr && wErr.message === 'CANCELLED') {
+                fecharModalExportarVideo();
+                return;
+              }
+              console.warn("Web Worker não suportado ou falhou, alternando para OffscreenCanvas na thread principal:", wErr);
+            }
+          }
+
+          // Tentativa B: OffscreenCanvas na thread principal com Bitmaps e Hardware Acceleration
+          if (!usouWorkerComSucesso && codecValido) {
+            statusText.innerText = `2/3: Inicializando codificador MP4 por Hardware (${targetW}x${targetH} ${codecValido})...`;
             progressFill.style.width = "15%";
 
             // Configuração do codificador de áudio AAC
@@ -3171,6 +3359,7 @@ Prompt: Two round white pods shooting through outer space as a colossal crimson 
               height: targetH,
               bitrate: targetBitrate,
               framerate: fps,
+              ...(usarHardwareAccel ? { hardwareAcceleration: 'prefer-hardware' } : {}),
               latencyMode: 'quality'
             };
             if (usarAvcConfig) {
@@ -3189,11 +3378,10 @@ Prompt: Two round white pods shooting through outer space as a colossal crimson 
                 return;
               }
 
-              // CONTROLE DE BACKPRESSURE: Se a fila tiver >= 2 quadros, aguarda esvaziar
-              // Isso garante que NUNCA acumula quadros na memória RAM/VRAM!
-              while (encoder.encodeQueueSize >= 2) {
+              // CONTROLE DE BACKPRESSURE: Se a fila tiver >= 3 quadros, aguarda esvaziar
+              while (encoder.encodeQueueSize >= 3) {
                 if (gravacaoCancelada) break;
-                await new Promise(r => setTimeout(r, 12));
+                await new Promise(r => setTimeout(r, 6));
               }
 
               if (gravacaoCancelada) {
@@ -3211,13 +3399,13 @@ Prompt: Two round white pods shooting through outer space as a colossal crimson 
                 duration: frameDurationMicros
               });
 
-              // Keyframe regular a cada 1 segundo (30 frames) para busca ágil e zero corrupção no YouTube
+              // Keyframe regular a cada 1 segundo para busca ágil
               const isKey = (frame % fps === 0) || (frame === 0);
               encoder.encode(videoFrame, { keyFrame: isKey });
               videoFrame.close();
 
-              // Cede a vez ao navegador a cada 2 quadros para tela e mouse responderem 100% livres
-              if (frame % 2 === 0 || frame === totalFrames - 1) {
+              // Cede a vez a cada 3 quadros
+              if (frame % 3 === 0 || frame === totalFrames - 1) {
                 const pct = Math.round(15 + ((frame / totalFrames) * 75));
                 progressFill.style.width = `${pct}%`;
                 let faseNome = "Scroll Contínuo";
