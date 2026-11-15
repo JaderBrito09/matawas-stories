@@ -293,7 +293,7 @@
 
     .cards-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(440px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(min(100%, 440px), 1fr));
       gap: 24px;
     }
 
@@ -306,6 +306,8 @@
       flex-direction: column;
       gap: 14px;
       box-shadow: 0 4px 18px rgba(0,0,0,0.3);
+      content-visibility: auto;
+      contain-intrinsic-size: 1px 280px;
     }
 
     .card-editor-header {
@@ -529,6 +531,8 @@
       display: none;
       justify-content: center;
       align-items: center;
+      padding: 16px;
+      overflow-y: auto;
       z-index: 1000;
     }
 
@@ -536,34 +540,38 @@
       background: #181c24;
       border: 1px solid #333a47;
       border-radius: 16px;
-      padding: 32px;
-      max-width: 520px;
-      width: 90%;
+      padding: 24px 28px;
+      max-width: 540px;
+      width: 100%;
+      max-height: calc(100vh - 32px);
+      overflow-y: auto;
       text-align: center;
       box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7);
+      margin: auto;
     }
 
     .modal-box h3 {
       font-size: 20px;
       font-weight: 800;
-      margin-bottom: 8px;
+      margin-bottom: 6px;
     }
 
     .modal-box p {
       color: var(--text-muted);
-      font-size: 14px;
-      margin-bottom: 24px;
+      font-size: 13.5px;
+      margin-bottom: 16px;
     }
 
     .video-config-row {
       display: flex;
       justify-content: space-between;
       align-items: center;
+      gap: 12px;
       background: #111317;
       border: 1px solid #282f3a;
-      padding: 12px 16px;
+      padding: 10px 14px;
       border-radius: 8px;
-      margin-bottom: 12px;
+      margin-bottom: 8px;
       text-align: left;
     }
 
@@ -577,10 +585,11 @@
       background: #1c212b;
       color: #fff;
       border: 1px solid #3b4453;
-      padding: 6px 12px;
+      padding: 6px 10px;
       border-radius: 6px;
       font-weight: 600;
-      font-size: 13px;
+      font-size: 12.5px;
+      max-width: 55%;
     }
 
     .progress-bar-bg {
@@ -789,6 +798,11 @@
         <button class="btn-secondary" id="btnToggleAudioPreview" onclick="toggleAudioPreview()" title="Tocar ou mutar a música no preview" style="display:flex; align-items:center; gap:6px;">
           <span id="audioPreviewIcon">🔊</span> Música
         </button>
+        <select id="previewTrackSelect" onchange="trocarTrilhaSonoraAtiva(this.value)" style="background:#1e222a; color:#2ed573; border:1px solid #2b313d; padding:6px 10px; border-radius:6px; font-weight:700; font-size:12.5px;" title="Escolher a trilha sonora da história">
+          <option value="trilha_nova.mp3" selected>🎵 Trilha 2: Angel Goku (Nova)</option>
+          <option value="trilha_padrao.mp3">🎵 Trilha 1: Clássica (Antiga)</option>
+          <option value="none">🔇 Sem Música</option>
+        </select>
         <div class="slider-container">
           <label style="font-size: 13px; color: var(--text-muted);">Posição do Scroll:</label>
           <input type="range" id="scrollSlider" min="0" max="100" value="0" oninput="onSliderMove(this.value)">
@@ -802,7 +816,7 @@
           </select>
         </div>
       </div>
-      <audio id="previewAudioElement" src="trilha_padrao.mp3" loop preload="auto"></audio>
+      <audio id="previewAudioElement" src="trilha_nova.mp3" loop preload="metadata"></audio>
     </div>
 
     <!-- SEÇÃO DE GERENCIAMENTO DOS CARDS -->
@@ -858,11 +872,12 @@
         </div>
 
         <div class="video-config-row">
-          <label>Música de Fundo Padrão (Trilha GokuShow):</label>
-          <div style="display:flex; align-items:center; gap:8px;">
-            <input type="checkbox" id="enableAudioTrack" checked style="width:22px; height:22px; accent-color:#ff4757; cursor:pointer;">
-            <span style="font-size:12.5px; color:#2ed573; font-weight:700;">🎵 Trilha Ativa (Auto-loop &amp; Fade)</span>
-          </div>
+          <label>Música de Fundo (Trilha GokuShow):</label>
+          <select id="videoAudioTrackSelect" onchange="sincronizarSelectTrilhaModal(this.value)" style="background:#111317; border:1px solid #333a47; color:#2ed573; padding:6px 10px; border-radius:6px; font-weight:700; font-family:inherit;">
+            <option value="trilha_nova.mp3" selected>🎵 Trilha 2: Angel Goku (Nova)</option>
+            <option value="trilha_padrao.mp3">🎵 Trilha 1: Clássica (Antiga)</option>
+            <option value="none">🔇 Sem Música (Vídeo Mudo)</option>
+          </select>
         </div>
 
         <div class="video-config-row">
@@ -904,14 +919,14 @@
           <span id="estimatedDuration" style="font-weight:700; color:#ffa502; font-size:13px;">20 segundos</span>
         </div>
 
-        <div style="background:rgba(46, 213, 115, 0.12); border:1px solid rgba(46, 213, 115, 0.4); border-radius:8px; padding:12px 14px; margin: 16px 0; font-size:13px; color:#2ed573; text-align:left; display:flex; align-items:flex-start; gap:10px;">
-          <span style="font-size:18px;">📱</span>
+        <div style="background:rgba(46, 213, 115, 0.12); border:1px solid rgba(46, 213, 115, 0.4); border-radius:8px; padding:10px 12px; margin: 12px 0; font-size:12.5px; color:#2ed573; text-align:left; display:flex; align-items:flex-start; gap:10px;">
+          <span style="font-size:16px;">📱</span>
           <span><strong>No Celular (iPhone / Android):</strong> Ao finalizar, abrirá automaticamente a tela do sistema. Basta tocar em <strong>"Salvar Vídeo"</strong> para o arquivo ir direto para a sua <strong>Galeria de Fotos</strong>!</span>
         </div>
 
-        <div style="display:flex; gap:12px; margin-top:16px;">
+        <div style="display:flex; gap:12px; margin-top:14px; position:sticky; bottom: -24px; background: #181c24; padding: 12px 0 4px; border-top: 1px solid rgba(255,255,255,0.06);">
           <button class="btn-secondary" style="flex:1;" onclick="fecharModalExportarVideo()">Cancelar</button>
-          <button class="btn-youtube" style="flex:1;" onclick="iniciarGravacaoVideo()">Iniciar Renderização</button>
+          <button class="btn-youtube" style="flex:1.4; justify-content:center;" onclick="iniciarGravacaoVideo()">🎬 Iniciar Renderização</button>
         </div>
       </div>
 
@@ -1142,15 +1157,22 @@
       <div style="background: linear-gradient(135deg, rgba(245, 158, 11, 0.12), rgba(220, 38, 38, 0.15)); border: 1px solid rgba(245, 158, 11, 0.4); border-radius: 12px; padding: 14px 18px; margin-bottom: 18px; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px;">
         <div style="flex: 1; min-width: 260px;">
           <div style="font-weight: 800; font-size: 14.5px; color: #fbbf24; display: flex; align-items: center; gap: 6px;">
-            <span>✨</span> IA Goku Show: Identificar Melhores Partes da História
+            <span>✨</span> IA Goku Show: Analisador Dramático de Cenas e Ganchos Virais
           </div>
           <div style="font-size: 12.5px; color: #cbd5e1; margin-top: 3px; line-height: 1.4;">
-            A IA analisa todas as cenas da sua história, escolhe automaticamente as 3 mais impactantes (Origem, Reviravolta e Clímax) e gera ganchos virais curtos de 2 a 3 palavras!
+            Pontua cada cena da sua história, descarta cards de "Subscribe", identifica os 3 picos emocionais (Premissa, Reviravolta e Clímax) e cria ganchos fiéis aos nomes e eventos reais da sua narrativa!
           </div>
         </div>
-        <button type="button" class="btn-thumb-goku" id="btnThumbAiAnalyze" onclick="identificarMelhoresCenasComIA()" style="padding: 10px 18px; font-size: 13.5px; white-space: nowrap;">
-          ⚡ Sugerir Cenas e Ganchos com IA
-        </button>
+        <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+          <select id="thumbHookLangSelect" onchange="identificarMelhoresCenasComIA()" style="padding: 9px 12px; background: #0c0e12; border: 1px solid #f59e0b; color: #fbbf24; border-radius: 8px; font-size: 12.5px; font-weight: 700; cursor: pointer;">
+            <option value="auto" selected>🌐 Idioma da História (Auto)</option>
+            <option value="en">🇺🇸 Ganchos em Inglês (Goku Show)</option>
+            <option value="pt">🇧🇷 Ganchos em Português</option>
+          </select>
+          <button type="button" class="btn-thumb-goku" id="btnThumbAiAnalyze" onclick="identificarMelhoresCenasComIA()" style="padding: 10px 18px; font-size: 13.5px; white-space: nowrap;">
+            ⚡ Sugerir Melhores Cenas &amp; Legendas
+          </button>
+        </div>
       </div>
 
       <!-- STATUS IA THUMBNAIL (QUANDO CARREGANDO) -->
@@ -1183,7 +1205,8 @@
           <select id="thumbCardSelect0" onchange="selecionarCardPainelThumb(0, this.value)" style="width: 100%; padding: 8px; background: #0c0e12; border: 1px solid #2e3646; color: #fff; border-radius: 6px; font-size: 12px; margin-bottom: 8px;"></select>
 
           <label style="font-size: 11px; color: var(--text-muted); display: block; margin-bottom: 4px;">Gancho de Texto (2 a 3 palavras):</label>
-          <input type="text" id="thumbHookText0" value="Best Friends?" placeholder="Ex: Best Friends?" oninput="renderizarThumbnailGokuCanvas()" style="width: 100%; padding: 8px; background: #0c0e12; border: 1px solid #2e3646; color: #fff; border-radius: 6px; font-size: 13px; font-weight: 700; margin-bottom: 8px;">
+          <input type="text" id="thumbHookText0" value="Best Friends?" placeholder="Ex: Best Friends?" oninput="renderizarThumbnailGokuCanvas()" style="width: 100%; padding: 8px; background: #0c0e12; border: 1px solid #2e3646; color: #fff; border-radius: 6px; font-size: 13px; font-weight: 700; margin-bottom: 6px;">
+          <div id="thumbHookChips0" style="display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px;"></div>
 
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
             <label style="font-size: 11px; color: var(--text-muted);">Enquadramento Vertical:</label>
@@ -1209,7 +1232,8 @@
           <select id="thumbCardSelect1" onchange="selecionarCardPainelThumb(1, this.value)" style="width: 100%; padding: 8px; background: #0c0e12; border: 1px solid #2e3646; color: #fff; border-radius: 6px; font-size: 12px; margin-bottom: 8px;"></select>
 
           <label style="font-size: 11px; color: var(--text-muted); display: block; margin-bottom: 4px;">Gancho de Texto (2 a 3 palavras):</label>
-          <input type="text" id="thumbHookText1" value="The Ultimate Duo!" placeholder="Ex: The Ultimate Duo!" oninput="renderizarThumbnailGokuCanvas()" style="width: 100%; padding: 8px; background: #0c0e12; border: 1px solid #2e3646; color: #fff; border-radius: 6px; font-size: 13px; font-weight: 700; margin-bottom: 8px;">
+          <input type="text" id="thumbHookText1" value="The Ultimate Duo!" placeholder="Ex: The Ultimate Duo!" oninput="renderizarThumbnailGokuCanvas()" style="width: 100%; padding: 8px; background: #0c0e12; border: 1px solid #2e3646; color: #fff; border-radius: 6px; font-size: 13px; font-weight: 700; margin-bottom: 6px;">
+          <div id="thumbHookChips1" style="display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px;"></div>
 
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
             <label style="font-size: 11px; color: var(--text-muted);">Enquadramento Vertical:</label>
@@ -1235,7 +1259,8 @@
           <select id="thumbCardSelect2" onchange="selecionarCardPainelThumb(2, this.value)" style="width: 100%; padding: 8px; background: #0c0e12; border: 1px solid #2e3646; color: #fff; border-radius: 6px; font-size: 12px; margin-bottom: 8px;"></select>
 
           <label style="font-size: 11px; color: var(--text-muted); display: block; margin-bottom: 4px;">Gancho de Texto (2 a 3 palavras):</label>
-          <input type="text" id="thumbHookText2" value="Universe Protector" placeholder="Ex: Super Namek!" oninput="renderizarThumbnailGokuCanvas()" style="width: 100%; padding: 8px; background: #0c0e12; border: 1px solid #2e3646; color: #fff; border-radius: 6px; font-size: 13px; font-weight: 700; margin-bottom: 8px;">
+          <input type="text" id="thumbHookText2" value="Universe Protector" placeholder="Ex: Super Namek!" oninput="renderizarThumbnailGokuCanvas()" style="width: 100%; padding: 8px; background: #0c0e12; border: 1px solid #2e3646; color: #fff; border-radius: 6px; font-size: 13px; font-weight: 700; margin-bottom: 6px;">
+          <div id="thumbHookChips2" style="display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px;"></div>
 
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
             <label style="font-size: 11px; color: var(--text-muted);">Enquadramento Vertical:</label>
@@ -1346,7 +1371,9 @@
             id: c.id,
             title: c.title,
             text: c.text,
-            image: c.image
+            image: c.image,
+            _promptOriginal: c._promptOriginal || '',
+            _isSubscribeCard: !!c._isSubscribeCard
           }));
 
           const tx = dbInstance.transaction(STORE_NAME, 'readwrite');
@@ -1358,7 +1385,7 @@
         } catch (e) {
           console.warn("Autosave falhou:", e);
         }
-      }, 250);
+      }, 900);
     }
 
     async function recuperarAutoSaveSeExistir() {
@@ -1444,7 +1471,7 @@
                 ${card._gerandoIA 
                   ? `<div class="ai-inline-loading"><div class="mini-spinner"></div><span>${card._statusTexto || '✨ Criando com IA...'}</span></div>`
                   : (card.image 
-                      ? `<img src="${card.image}" alt="Cena ${index + 1}">` 
+                      ? `<img src="${card.image}" alt="Cena ${index + 1}" loading="lazy" decoding="async">` 
                       : `<div style="color:#747d8c; font-size:11px; text-align:center; padding:10px; font-weight:700;">Sem Imagem<br><span style="font-size:9.5px; opacity:0.7;">(IA ou Arquivo)</span></div>`
                     )
                 }
@@ -1645,7 +1672,12 @@
         return;
       }
 
-      const geminiKey = (document.getElementById('geminiApiKeyInput')?.value || localStorage.getItem('matawas_gemini_api_key') || '').trim();
+      const geminiKey = (
+        document.getElementById('geminiApiKeyInput')?.value ||
+        serverEnvConfig.apiKey ||
+        localStorage.getItem('matawas_gemini_api_key') ||
+        ''
+      ).trim();
       if (geminiKey) {
         localStorage.setItem('matawas_gemini_api_key', geminiKey);
       }
@@ -1664,83 +1696,111 @@
       iniciarProcessamentoIAEmSegundoPlano(targetCardId, prompt, geminiKey);
     }
 
-    // MOTOR PRINCIPAL DE GERAÇÃO DE IMAGEM (Gemini 3.1 Flash Image + Contingência Pollinations)
+    // MOTOR PRINCIPAL DE GERAÇÃO DE IMAGEM (EXCLUSIVO GOOGLE GEMINI - SEM IAS DE TERCEIROS)
+    let ultimoErroGeminiImagem = '';
+
     async function gerarImagemBase64(prompt, geminiKey) {
+      ultimoErroGeminiImagem = '';
       // FÓRMULA OFICIAL DE PROMPT DO GEMINI PARA ANIME MODERNO DE ALTA DEFINIÇÃO
       const formulaPrompt = `High quality modern anime illustration, crisp lines, vibrant vivid colors, cinematic lighting, dynamic atmosphere, sharp focus, detailed digital anime artwork: ${prompt}, masterpiece, 8k resolution, clean composition`;
 
+      // Garante que a chave do .env do servidor já foi carregada (especialmente no celular/conexão lenta)
+      let activeKey = (geminiKey || serverEnvConfig.apiKey || localStorage.getItem('matawas_gemini_api_key') || '').trim();
+      if (!activeKey) {
+        await carregarConfiguracoesServidor();
+        activeKey = (serverEnvConfig.apiKey || localStorage.getItem('matawas_gemini_api_key') || '').trim();
+      }
+
+      if (!activeKey) {
+        ultimoErroGeminiImagem = 'Chave da API Google Gemini não configurada.';
+        return null;
+      }
+
+      let modelEnv = serverEnvConfig.imageModel || 'gemini-3.1-flash-image';
+      if (modelEnv === 'gemini-3.8-flash' || modelEnv.includes('nano-banana')) {
+        modelEnv = 'gemini-3.1-flash-image';
+      }
+
+      const modelosGemini = [
+        modelEnv,
+        'gemini-3.1-flash-image-preview',
+        'gemini-2.5-flash-image',
+        'gemini-2.0-flash-exp-image-generation',
+        'imagen-3.0-generate-002'
+      ].filter((m, idx, arr) => m && arr.indexOf(m) === idx);
+
       let base64Data = null;
 
-      // 1. TENTATIVA COM A API OFICIAL DO GOOGLE GEMINI
-      if (geminiKey) {
-        try {
-          let modelName = serverEnvConfig.imageModel || 'gemini-3.1-flash-image';
-          if (modelName === 'gemini-3.8-flash' || modelName.includes('nano-banana')) {
-            modelName = 'gemini-3.1-flash-image';
-          }
+      for (const modelName of modelosGemini) {
+        if (base64Data) break;
 
-          if (modelName.startsWith('imagen-')) {
-            const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:predict?key=${geminiKey}`;
-            const response = await fetch(geminiUrl, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                instances: [{ prompt: formulaPrompt }],
-                parameters: { sampleCount: 1, aspectRatio: "3:4", personGeneration: "ALLOW_ADULT" }
-              })
-            });
-            const data = await response.json();
-            if (data.predictions && data.predictions.length > 0 && data.predictions[0].bytesBase64Encoded) {
-              const mime = data.predictions[0].mimeType || 'image/jpeg';
-              base64Data = `data:${mime};base64,${data.predictions[0].bytesBase64Encoded}`;
+        // Até 2 tentativas por modelo caso ocorra oscilação de rede ou rate-limit (429) no celular
+        for (let tentativa = 0; tentativa < 2; tentativa++) {
+          try {
+            if (modelName.startsWith('imagen-')) {
+              const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:predict?key=${activeKey}`;
+              const response = await fetch(geminiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  instances: [{ prompt: formulaPrompt }],
+                  parameters: { sampleCount: 1, aspectRatio: "3:4", personGeneration: "ALLOW_ADULT" }
+                })
+              });
+              const data = await response.json();
+              if (response.status === 429 && tentativa === 0) {
+                await new Promise(r => setTimeout(r, 2000));
+                continue;
+              }
+              if (!response.ok) {
+                ultimoErroGeminiImagem = data.error?.message || `Erro HTTP ${response.status}`;
+                break;
+              }
+              if (data.predictions && data.predictions.length > 0 && data.predictions[0].bytesBase64Encoded) {
+                const mime = data.predictions[0].mimeType || 'image/jpeg';
+                base64Data = `data:${mime};base64,${data.predictions[0].bytesBase64Encoded}`;
+                break;
+              }
+            } else {
+              const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${activeKey}`;
+              const response = await fetch(geminiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  contents: [{ parts: [{ text: formulaPrompt }] }],
+                  generationConfig: { responseModalities: ["image", "text"] }
+                })
+              });
+              const data = await response.json();
+              if (response.status === 429 && tentativa === 0) {
+                await new Promise(r => setTimeout(r, 2000));
+                continue;
+              }
+              if (!response.ok) {
+                ultimoErroGeminiImagem = data.error?.message || `Erro HTTP ${response.status}`;
+                break;
+              }
+              const parts = data.candidates?.[0]?.content?.parts || [];
+              const imgPart = parts.find(p => p.inlineData && p.inlineData.data);
+              if (imgPart) {
+                const mime = imgPart.inlineData.mimeType || 'image/png';
+                base64Data = `data:${mime};base64,${imgPart.inlineData.data}`;
+                break;
+              }
             }
-          } else {
-            const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${geminiKey}`;
-            const response = await fetch(geminiUrl, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                contents: [{ parts: [{ text: formulaPrompt }] }],
-                generationConfig: { responseModalities: ["image", "text"] }
-              })
-            });
-            const data = await response.json();
-            const parts = data.candidates?.[0]?.content?.parts || [];
-            const imgPart = parts.find(p => p.inlineData && p.inlineData.data);
-            if (imgPart) {
-              const mime = imgPart.inlineData.mimeType || 'image/png';
-              base64Data = `data:${mime};base64,${imgPart.inlineData.data}`;
+          } catch (err) {
+            ultimoErroGeminiImagem = err.message || 'Falha de conexão com Google Gemini';
+            if (tentativa === 0) {
+              await new Promise(r => setTimeout(r, 1200));
+              continue;
             }
           }
-        } catch (err) {
-          console.warn('Falha na API Gemini, tentando contingência:', err);
+          break;
         }
       }
 
-      // 2. MOTOR DE CONTINGÊNCIA SE O GEMINI FALHAR OU ESTIVER SEM CHAVE
-      if (!base64Data) {
-        try {
-          const seed = Math.floor(Math.random() * 9999999);
-          const encodedPrompt = encodeURIComponent(formulaPrompt);
-          const imageUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=600&height=680&nologo=true&seed=${seed}`;
-
-          base64Data = await new Promise((resolve, reject) => {
-            const img = new Image();
-            img.crossOrigin = "anonymous";
-            img.onload = () => {
-              const c = document.createElement('canvas');
-              c.width = 600;
-              c.height = 680;
-              const ctx = c.getContext('2d');
-              ctx.drawImage(img, 0, 0, 600, 680);
-              resolve(c.toDataURL('image/jpeg', 0.92));
-            };
-            img.onerror = () => reject(new Error("Falha ao carregar"));
-            img.src = imageUrl;
-          });
-        } catch (pollErr) {
-          console.warn('Falha no motor de contingência:', pollErr);
-        }
+      if (base64Data) {
+        base64Data = await comprimirImagemParaCard(base64Data);
       }
 
       return base64Data;
@@ -1764,7 +1824,8 @@
         } else {
           renderEditor();
           renderPreview();
-          mostrarToast(`Erro ao gerar ilustração para o ${card.title}. Tente novamente.`, true);
+          const detalheErro = ultimoErroGeminiImagem ? ` (${ultimoErroGeminiImagem})` : '';
+          mostrarToast(`Erro no Google Gemini para ${card.title}${detalheErro}`, true);
         }
       }
     }
@@ -2079,6 +2140,7 @@ Prompt: Two round white pods shooting through outer space as a colossal crimson 
       }
 
       // Renderiza na tela instantaneamente para o usuário ver todos os cards e legendas
+      if (typeof thumbState !== 'undefined') thumbState.hasAutoAnalyzed = false;
       renderEditor();
       renderPreview();
       dispararAutoSave();
@@ -2231,18 +2293,19 @@ Prompt: Two round white pods shooting through outer space as a colossal crimson 
       cards.forEach((card, index) => {
         const cardEl = document.createElement('div');
         cardEl.className = 'comic-card';
+        cardEl.id = `preview-card-${card.id}`;
         cardEl.innerHTML = `
-          <div class="comic-image-slot">
+          <div class="comic-image-slot" id="preview-img-slot-${card.id}">
             ${card._gerandoIA 
               ? `<div class="ai-inline-loading" style="font-size:14px;"><div class="mini-spinner" style="width:36px; height:36px;"></div><span style="font-size:13px;">${card._statusTexto || '✨ Criando com IA...'}</span></div>`
               : (card.image 
-                  ? `<img src="${card.image}" alt="Cena ${index + 1}">` 
+                  ? `<img src="${card.image}" alt="Cena ${index + 1}" loading="lazy" decoding="async">` 
                   : `<div class="comic-image-placeholder">Imagem da Cena #${index + 1}<br><span style="font-size:11px; opacity:0.7;">(Upload no painel abaixo)</span></div>`
                 )
             }
           </div>
           <div class="comic-text-slot">
-            <p>${formatarTexto(card.text)}</p>
+            <p id="preview-txt-${card.id}">${formatarTexto(card.text)}</p>
           </div>
         `;
         conveyor.appendChild(cardEl);
@@ -2264,16 +2327,54 @@ Prompt: Two round white pods shooting through outer space as a colossal crimson 
       return str.replace(/\n/g, '<br>');
     }
 
+    // COMPRESSÃO AUTOMÁTICA DE IMAGEM (Reduz uso de RAM em celulares e PCs em até 85% sem perda visual)
+    function comprimirImagemParaCard(dataUrl) {
+      if (!dataUrl || typeof dataUrl !== 'string') return Promise.resolve(dataUrl);
+      return new Promise((resolve) => {
+        const img = new Image();
+        img.onload = () => {
+          try {
+            const targetW = 620;
+            const targetH = 686;
+            const canvas = document.createElement('canvas');
+            canvas.width = targetW;
+            canvas.height = targetH;
+            const ctx = canvas.getContext('2d');
+            const imgRatio = img.width / img.height;
+            const slotRatio = targetW / targetH;
+            let sx = 0, sy = 0, sw = img.width, sh = img.height;
+            if (imgRatio > slotRatio) {
+              sw = img.height * slotRatio;
+              sx = (img.width - sw) / 2;
+            } else {
+              sh = img.width / slotRatio;
+              sy = (img.height - sh) / 2;
+            }
+            ctx.drawImage(img, sx, sy, sw, sh, 0, 0, targetW, targetH);
+            resolve(canvas.toDataURL('image/jpeg', 0.84));
+          } catch (e) {
+            resolve(dataUrl);
+          }
+        };
+        img.onerror = () => resolve(dataUrl);
+        img.src = dataUrl;
+      });
+    }
+
     function carregarImagem(id, event) {
       const file = event.target.files[0];
       if (!file) return;
 
       const reader = new FileReader();
-      reader.onload = (e) => {
+      reader.onload = async (e) => {
         const card = cards.find(c => c.id === id);
         if (card) {
-          card.image = e.target.result;
+          card.image = await comprimirImagemParaCard(e.target.result);
           card._loadedImg = null;
+          if (card._cachedBitmap && typeof card._cachedBitmap.close === 'function') {
+            try { card._cachedBitmap.close(); } catch (err) {}
+          }
+          card._cachedBitmap = null;
           renderEditor();
           dispararAutoSave();
         }
@@ -2285,10 +2386,21 @@ Prompt: Two round white pods shooting through outer space as a colossal crimson 
       const card = cards.find(c => c.id === id);
       if (card) {
         card.text = texto;
-        // Atualiza na hora o texto da mini cartinha realista
+        if (card._cachedBitmap && typeof card._cachedBitmap.close === 'function') {
+          try { card._cachedBitmap.close(); } catch (err) {}
+        }
+        if (card._cachedTxtBitmap && typeof card._cachedTxtBitmap.close === 'function') {
+          try { card._cachedTxtBitmap.close(); } catch (err) {}
+        }
+        card._cachedBitmap = null;
+        card._cachedTxtBitmap = null;
+
+        // Atualiza cirurgicamente apenas o texto da mini cartinha e do preview (sem recriar toda a DOM!)
+        const htmlFormatado = formatarTexto(texto);
         const miniTxt = document.getElementById(`mini-txt-${id}`);
-        if (miniTxt) miniTxt.innerHTML = formatarTexto(texto);
-        renderPreview();
+        if (miniTxt) miniTxt.innerHTML = htmlFormatado;
+        const prevTxt = document.getElementById(`preview-txt-${id}`);
+        if (prevTxt) prevTxt.innerHTML = htmlFormatado;
         dispararAutoSave();
       }
     }
@@ -2668,7 +2780,8 @@ Prompt: Two round white pods shooting through outer space as a colossal crimson 
       txtCanvas.height = txtH;
       const txtCtx = txtCanvas.getContext('2d');
 
-      for (const card of listaCards) {
+      for (let idx = 0; idx < listaCards.length; idx++) {
+        const card = listaCards[idx];
         if (!card._cachedBitmap) {
           offCtx.clearRect(0, 0, cardW, cardH);
           desenharSlotImagem(offCtx, card, 0, 0, cardW, cardH, 1, 1);
@@ -2683,7 +2796,8 @@ Prompt: Two round white pods shooting through outer space as a colossal crimson 
           }
         }
 
-        if (!card._cachedTxtBitmap) {
+        // Apenas os 3 primeiros cards usam txtBitmap separado na transição de intro (economiza RAM no celular!)
+        if (idx < 3 && !card._cachedTxtBitmap) {
           txtCtx.clearRect(0, 0, cardW, txtH);
           desenharSlotTexto(txtCtx, card, 0, -(cardH * 0.66), cardW, cardH, 1);
           if (typeof createImageBitmap === 'function') {
@@ -2817,8 +2931,18 @@ Prompt: Two round white pods shooting through outer space as a colossal crimson 
 
     function abrirModalExportarVideo() {
       atualizarTempoEstimado();
+      // Em celulares (iPhone / Android), seleciona 720p HD como padrão seguro para evitar crash de memória na aba
+      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+      const resSel = document.getElementById('videoResolutionSelect');
+      if (isMobile && resSel && !resSel.dataset.userChanged) {
+        resSel.value = '720';
+      }
+      if (resSel && !resSel.dataset.listenerAdded) {
+        resSel.dataset.listenerAdded = '1';
+        resSel.addEventListener('change', () => { resSel.dataset.userChanged = '1'; });
+      }
       document.getElementById('modalTitle').innerText = 'Exportar Vídeo para o YouTube';
-      document.getElementById('modalDesc').innerText = 'Gere o arquivo de vídeo pronto em 1080p Full HD com velocidade 100% constante.';
+      document.getElementById('modalDesc').innerText = 'Gere o arquivo de vídeo pronto com velocidade 100% constante e sem travar.';
       document.getElementById('modalConfigForm').style.display = 'block';
       document.getElementById('modalProgressArea').style.display = 'none';
       const successArea = document.getElementById('modalSuccessArea');
@@ -2907,87 +3031,136 @@ Prompt: Two round white pods shooting through outer space as a colossal crimson 
 
     /* ========================================================
        GERENCIAMENTO DE ÁUDIO E TRILHA SONORA (Tema GokuShow)
+       ZERO ALOCAÇÃO DE BUFFER GIGANTE: Loop em Streaming para não dar crash no Celular
        ======================================================== */
-    let bufferTrilhaPadraoCache = null;
+    let bufferTrilhaCache = {};
+    let trilhaSonoraSelecionada = 'trilha_nova.mp3';
 
-    async function obterAudioBufferTrilha() {
-      if (bufferTrilhaPadraoCache) {
-        return bufferTrilhaPadraoCache;
+    function trocarTrilhaSonoraAtiva(arquivoTrilha) {
+      trilhaSonoraSelecionada = arquivoTrilha || 'trilha_nova.mp3';
+      const prevSel = document.getElementById('previewTrackSelect');
+      const modalSel = document.getElementById('videoAudioTrackSelect');
+      if (prevSel && prevSel.value !== trilhaSonoraSelecionada) prevSel.value = trilhaSonoraSelecionada;
+      if (modalSel && modalSel.value !== trilhaSonoraSelecionada) modalSel.value = trilhaSonoraSelecionada;
+
+      const audioEl = document.getElementById('previewAudioElement');
+      if (audioEl) {
+        if (trilhaSonoraSelecionada === 'none') {
+          audioEl.pause();
+          previewAudioAtivo = false;
+          const icon = document.getElementById('audioPreviewIcon');
+          if (icon) icon.innerText = '🔇';
+          mostrarToast("🔇 Vídeo configurado sem música de fundo");
+        } else {
+          previewAudioAtivo = true;
+          const icon = document.getElementById('audioPreviewIcon');
+          if (icon) icon.innerText = '🔊';
+          const estavaTocando = isPlaying;
+          audioEl.src = trilhaSonoraSelecionada;
+          audioEl.load();
+          if (estavaTocando) {
+            audioEl.play().catch(() => {});
+          }
+          const nomeAmigavel = trilhaSonoraSelecionada === 'trilha_nova.mp3'
+            ? 'Trilha 2: Angel Goku (Nova)'
+            : 'Trilha 1: Clássica (Antiga)';
+          mostrarToast(`🎵 ${nomeAmigavel} selecionada!`);
+        }
       }
+    }
+
+    function sincronizarSelectTrilhaModal(val) {
+      trocarTrilhaSonoraAtiva(val);
+    }
+
+    async function obterAudioBufferTrilha(arquivoAlvo = null) {
+      const trackFile = arquivoAlvo || document.getElementById('videoAudioTrackSelect')?.value || trilhaSonoraSelecionada || 'trilha_nova.mp3';
+      if (trackFile === 'none') return null;
+
+      // Mantém apenas 1 trilha decodificada em cache para economizar memória RAM no celular
+      if (bufferTrilhaCache[trackFile]) {
+        return bufferTrilhaCache[trackFile];
+      }
+      bufferTrilhaCache = {};
 
       try {
-        const resp = await fetch('trilha_padrao.mp3');
-        if (!resp.ok) throw new Error("Falha ao baixar trilha_padrao.mp3");
+        const resp = await fetch(trackFile);
+        if (!resp.ok) throw new Error(`Falha ao baixar ${trackFile}`);
         const arrayBuf = await resp.arrayBuffer();
 
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 44100 });
-        bufferTrilhaPadraoCache = await audioCtx.decodeAudioData(arrayBuf);
+        const decoded = await audioCtx.decodeAudioData(arrayBuf);
         audioCtx.close().catch(() => {});
-        return bufferTrilhaPadraoCache;
+        bufferTrilhaCache[trackFile] = decoded;
+        return decoded;
       } catch (err) {
-        console.warn("Não foi possível carregar a trilha sonora padrão:", err);
+        console.warn("Não foi possível carregar a trilha sonora:", err);
         return null;
       }
     }
 
-    // Renderiza a trilha estendida ou ajustada na duração exata do vídeo com fade-out suave no final
-    async function renderizarTrilhaParaDuracao(duracaoTotalSegundos) {
-      const audioBufferBase = await obterAudioBufferTrilha();
+    // Extrai os canais base da trilha original (sem duplicar na memória pela duração inteira do vídeo!)
+    async function obterDadosBaseTrilha(arquivoAlvo = null) {
+      const audioBufferBase = await obterAudioBufferTrilha(arquivoAlvo);
       if (!audioBufferBase) return null;
 
-      const sampleRate = 44100;
-      const totalFrames = Math.ceil(duracaoTotalSegundos * sampleRate);
-      const offlineCtx = new OfflineAudioContext(2, totalFrames, sampleRate);
+      const sampleRate = audioBufferBase.sampleRate || 44100;
+      const ch0 = audioBufferBase.getChannelData(0);
+      const ch1 = audioBufferBase.numberOfChannels > 1 ? audioBufferBase.getChannelData(1) : ch0;
 
-      const gainNode = offlineCtx.createGain();
-      gainNode.connect(offlineCtx.destination);
-      gainNode.gain.setValueAtTime(1.0, 0);
-
-      // Fade-out suave nos últimos 1.5s para término limpo sem corte seco
-      const fadeInicio = Math.max(0, duracaoTotalSegundos - 1.5);
-      gainNode.gain.setValueAtTime(1.0, fadeInicio);
-      gainNode.gain.linearRampToValueAtTime(0.001, duracaoTotalSegundos);
-
-      // Estende / repete (loop) a música continuamente até cobrir todo o vídeo
-      let offset = 0;
-      while (offset < duracaoTotalSegundos) {
-        const source = offlineCtx.createBufferSource();
-        source.buffer = audioBufferBase;
-        source.connect(gainNode);
-        source.start(offset);
-        offset += audioBufferBase.duration;
-      }
-
-      return await offlineCtx.startRendering();
+      return {
+        audioBufferBase,
+        ch0,
+        ch1,
+        baseLength: audioBufferBase.length,
+        sampleRate
+      };
     }
 
-    // Codifica o AudioBuffer PCM em pacotes AAC para o MP4-Muxer
-    async function codificarAudioParaMuxer(renderedBuffer, audioEncoder) {
-      if (!renderedBuffer || !audioEncoder) return;
+    // Codifica o áudio em streaming com loop matemático e fade-out em tempo real (Zero uso extra de RAM)
+    async function codificarAudioStreamingParaMuxer(dadosBase, duracaoTotalSegundos, audioEncoder) {
+      if (!dadosBase || !audioEncoder) return;
 
-      const channel0 = renderedBuffer.getChannelData(0);
-      const channel1 = renderedBuffer.numberOfChannels > 1 ? renderedBuffer.getChannelData(1) : channel0;
-      const sampleRate = renderedBuffer.sampleRate;
-      const chunkSize = 1024; // Padrão AAC (1024 amostras por frame)
+      const { ch0, ch1, baseLength, sampleRate } = dadosBase;
+      const totalTargetFrames = Math.ceil(duracaoTotalSegundos * sampleRate);
+      const fadeStartSample = Math.max(0, Math.floor((duracaoTotalSegundos - 1.5) * sampleRate));
+      const fadeSamplesCount = Math.max(1, totalTargetFrames - fadeStartSample);
+
+      const chunkSize = 1024;
+      const planarData = new Float32Array(chunkSize * 2);
       let frameOffset = 0;
 
-      while (frameOffset < renderedBuffer.length) {
-        const framesInChunk = Math.min(chunkSize, renderedBuffer.length - frameOffset);
-        const planarData = new Float32Array(framesInChunk * 2);
+      while (frameOffset < totalTargetFrames) {
+        if (gravacaoCancelada) break;
 
-        // Formato f32-planar esperado pelo WebCodecs: canal 0 seguido pelo canal 1
-        planarData.set(channel0.subarray(frameOffset, frameOffset + framesInChunk), 0);
-        planarData.set(channel1.subarray(frameOffset, frameOffset + framesInChunk), framesInChunk);
+        // Backpressure no codificador de áudio para não estourar memória
+        while (audioEncoder.encodeQueueSize >= 8) {
+          if (gravacaoCancelada) break;
+          await new Promise(r => setTimeout(r, 4));
+        }
+
+        const framesInChunk = Math.min(chunkSize, totalTargetFrames - frameOffset);
+        const bufTarget = framesInChunk === chunkSize ? planarData : new Float32Array(framesInChunk * 2);
+
+        for (let s = 0; s < framesInChunk; s++) {
+          const globalSample = frameOffset + s;
+          const srcIdx = globalSample % baseLength;
+          let gain = 1.0;
+          if (globalSample >= fadeStartSample) {
+            gain = Math.max(0.001, 1.0 - ((globalSample - fadeStartSample) / fadeSamplesCount));
+          }
+          bufTarget[s] = ch0[srcIdx] * gain;
+          bufTarget[framesInChunk + s] = ch1[srcIdx] * gain;
+        }
 
         const timestampMicros = Math.round((frameOffset / sampleRate) * 1_000_000);
-
         const audioData = new AudioData({
           format: 'f32-planar',
           sampleRate: sampleRate,
           numberOfFrames: framesInChunk,
           numberOfChannels: 2,
           timestamp: timestampMicros,
-          data: planarData
+          data: bufTarget
         });
 
         audioEncoder.encode(audioData);
@@ -3062,17 +3235,19 @@ Prompt: Two round white pods shooting through outer space as a colossal crimson 
       const totalScrollTime = scrollCardsDur + endScreenDur;
       const duracaoTotal = introDur + totalScrollTime;
 
-      // Renderiza trilha sonora oficial estendida na duração exata do vídeo
-      let audioBufferVideo = null;
-      const incluirAudio = document.getElementById('enableAudioTrack')?.checked !== false;
-      if (incluirAudio) {
+      // Carrega a trilha sonora base (sem duplicar na memória pela duração inteira do vídeo!)
+      let dadosBaseAudio = null;
+      const trackEscolhida = document.getElementById('videoAudioTrackSelect')?.value || trilhaSonoraSelecionada || 'trilha_nova.mp3';
+      if (trackEscolhida !== 'none') {
         try {
-          statusText.innerText = "1/3: Preparando trilha sonora oficial estendida...";
-          audioBufferVideo = await renderizarTrilhaParaDuracao(duracaoTotal);
+          statusText.innerText = "1/3: Carregando trilha sonora otimizada...";
+          dadosBaseAudio = await obterDadosBaseTrilha(trackEscolhida);
         } catch (err) {
           console.warn("Falha ao processar trilha de áudio:", err);
         }
       }
+
+      const isMobileDevice = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
       const totalFaixaW = (cardsParaVideo.length * cardW) + ((cardsParaVideo.length - 1) * gap) + (margin * 2);
       // Espaço vazio para tela final do YouTube: deixa os últimos quadros legíveis na esquerda e área vazia na direita
@@ -3223,8 +3398,8 @@ Prompt: Two round white pods shooting through outer space as a colossal crimson 
 
           let usouWorkerComSucesso = false;
 
-          // Tentativa A: Web Worker em segundo plano (CPU separada, zero travamento de UI)
-          if (window.Worker && codecValido) {
+          // Tentativa A: Web Worker em segundo plano (Em Desktop; no Celular renderiza direto na thread principal para evitar clonar bitmaps na RAM)
+          if (window.Worker && codecValido && !isMobileDevice) {
             try {
               statusText.innerText = `2/3: Inicializando Web Worker com aceleração por hardware (${codecValido})...`;
               progressFill.style.width = "15%";
@@ -3232,19 +3407,21 @@ Prompt: Two round white pods shooting through outer space as a colossal crimson 
               const worker = new Worker('video_worker.js');
               activeVideoWorker = worker;
 
-              const cardsData = cardsParaVideo.map(c => ({
+              const cardsData = cardsParaVideo.map((c, idx) => ({
                 bitmap: c._cachedBitmap,
-                txtBitmap: c._cachedTxtBitmap
+                txtBitmap: idx < 3 ? c._cachedTxtBitmap : null
               }));
 
-              let planarAudioData = null;
-              if (audioBufferVideo) {
-                const totalSamples = audioBufferVideo.length;
-                planarAudioData = new Float32Array(totalSamples * 2);
-                const ch0 = audioBufferVideo.getChannelData(0);
-                const ch1 = audioBufferVideo.numberOfChannels > 1 ? audioBufferVideo.getChannelData(1) : ch0;
-                planarAudioData.set(ch0, 0);
-                planarAudioData.set(ch1, totalSamples);
+              // Envia apenas uma cópia dos canais da trilha base; o Worker faz o loop matemático e fade em tempo real
+              let baseAudioCh0 = null;
+              let baseAudioCh1 = null;
+              let baseAudioSampleRate = 44100;
+              const transferList = [];
+              if (dadosBaseAudio) {
+                baseAudioCh0 = new Float32Array(dadosBaseAudio.ch0);
+                baseAudioCh1 = new Float32Array(dadosBaseAudio.ch1);
+                baseAudioSampleRate = dadosBaseAudio.sampleRate;
+                transferList.push(baseAudioCh0.buffer, baseAudioCh1.buffer);
               }
 
               const workerPromise = new Promise((resolve, reject) => {
@@ -3272,9 +3449,9 @@ Prompt: Two round white pods shooting through outer space as a colossal crimson 
                 targetW, targetH, fps, targetBitrate, duracaoTotal, totalFrames,
                 cardsData, cardW, cardH, gap, margin,
                 enableIntro, introDur, scrollCardsDur, maxDeslocamento,
-                planarAudioData, sampleRate: audioBufferVideo ? audioBufferVideo.sampleRate : 44100,
+                baseAudioCh0, baseAudioCh1, sampleRate: baseAudioSampleRate,
                 codecValido, usarAvcConfig, usarHardwareAccel
-              });
+              }, transferList);
 
               videoBlob = await workerPromise;
               worker.terminate();
@@ -3296,7 +3473,7 @@ Prompt: Two round white pods shooting through outer space as a colossal crimson 
             }
           }
 
-          // Tentativa B: OffscreenCanvas na thread principal com Bitmaps e Hardware Acceleration
+          // Tentativa B: OffscreenCanvas na thread principal com Bitmaps e Hardware Acceleration (Padrão Ultra-Leve no Celular)
           if (!usouWorkerComSucesso && codecValido) {
             statusText.innerText = `2/3: Inicializando codificador MP4 por Hardware (${targetW}x${targetH} ${codecValido})...`;
             progressFill.style.width = "15%";
@@ -3304,12 +3481,13 @@ Prompt: Two round white pods shooting through outer space as a colossal crimson 
             // Configuração do codificador de áudio AAC
             let audioEncoder = null;
             let usarAudioNoMuxer = false;
+            const audioSampleRate = dadosBaseAudio ? dadosBaseAudio.sampleRate : 44100;
 
-            if (audioBufferVideo && typeof window.AudioEncoder === 'function' && typeof window.AudioData === 'function') {
+            if (dadosBaseAudio && typeof window.AudioEncoder === 'function' && typeof window.AudioData === 'function') {
               try {
                 const aCheck = await AudioEncoder.isConfigSupported({
                   codec: 'mp4a.40.2',
-                  sampleRate: 44100,
+                  sampleRate: audioSampleRate,
                   numberOfChannels: 2,
                   bitrate: 128000
                 });
@@ -3320,7 +3498,7 @@ Prompt: Two round white pods shooting through outer space as a colossal crimson 
                   });
                   await audioEncoder.configure({
                     codec: 'mp4a.40.2',
-                    sampleRate: 44100,
+                    sampleRate: audioSampleRate,
                     numberOfChannels: 2,
                     bitrate: 128000
                   });
@@ -3342,7 +3520,7 @@ Prompt: Two round white pods shooting through outer space as a colossal crimson 
                 audio: {
                   codec: 'aac',
                   numberOfChannels: 2,
-                  sampleRate: 44100
+                  sampleRate: audioSampleRate
                 }
               } : {}),
               fastStart: 'in-memory'
@@ -3378,8 +3556,9 @@ Prompt: Two round white pods shooting through outer space as a colossal crimson 
                 return;
               }
 
-              // CONTROLE DE BACKPRESSURE: Se a fila tiver >= 3 quadros, aguarda esvaziar
-              while (encoder.encodeQueueSize >= 3) {
+              // CONTROLE DE BACKPRESSURE ESTRITO (evita picos de VRAM no celular)
+              const maxQueue = isMobileDevice ? 2 : 3;
+              while (encoder.encodeQueueSize >= maxQueue) {
                 if (gravacaoCancelada) break;
                 await new Promise(r => setTimeout(r, 6));
               }
@@ -3404,8 +3583,9 @@ Prompt: Two round white pods shooting through outer space as a colossal crimson 
               encoder.encode(videoFrame, { keyFrame: isKey });
               videoFrame.close();
 
-              // Cede a vez a cada 3 quadros
-              if (frame % 3 === 0 || frame === totalFrames - 1) {
+              // Cede a vez regularmente para manter o navegador responsivo e acionar Garbage Collector no mobile
+              const yieldInterval = isMobileDevice ? 2 : 3;
+              if (frame % yieldInterval === 0 || frame === totalFrames - 1) {
                 const pct = Math.round(15 + ((frame / totalFrames) * 75));
                 progressFill.style.width = `${pct}%`;
                 let faseNome = "Scroll Contínuo";
@@ -3418,21 +3598,22 @@ Prompt: Two round white pods shooting through outer space as a colossal crimson 
                   }
                 }
                 statusText.innerText = `Renderizando [${faseNome}]: ${Math.round((frame/totalFrames)*100)}% (${(frame/fps).toFixed(1)}s / ${duracaoTotal.toFixed(1)}s)`;
-                await new Promise(r => requestAnimationFrame(r));
+                await new Promise(r => setTimeout(r, 0));
               }
             }
 
-            // Codifica o áudio estendido para o muxer antes do fechamento
-            if (usarAudioNoMuxer && audioEncoder && audioBufferVideo) {
-              statusText.innerText = "Processando e sincronizando trilha sonora AAC...";
+            // Codifica o áudio em streaming (sem clonar buffer gigante!)
+            if (usarAudioNoMuxer && audioEncoder && dadosBaseAudio) {
+              statusText.innerText = "Sincronizando trilha sonora AAC em streaming...";
               progressFill.style.width = "94%";
-              await codificarAudioParaMuxer(audioBufferVideo, audioEncoder);
+              await codificarAudioStreamingParaMuxer(dadosBaseAudio, duracaoTotal, audioEncoder);
             }
 
             statusText.innerText = "Finalizando empacotamento MP4 com áudio...";
             await encoder.flush();
+            encoder.close();
             if (audioEncoder) {
-              await audioEncoder.flush();
+              try { audioEncoder.close(); } catch (e) {}
             }
             muxer.finalize();
 
@@ -3451,6 +3632,19 @@ Prompt: Two round white pods shooting through outer space as a colossal crimson 
         statusText.innerText = "2/3: Configurando gravador com trilha sonora...";
         progressFill.style.width = "25%";
 
+        // MediaRecorder exige um HTMLCanvasElement real da DOM (OffscreenCanvas não possui captureStream no iOS/Safari)
+        const domCanvasFallback = document.getElementById('videoRenderCanvas');
+        domCanvasFallback.width = targetW;
+        domCanvasFallback.height = targetH;
+        const domCtxFallback = domCanvasFallback.getContext('2d', { alpha: false });
+
+        function renderizarFrameDomFallback(tempo) {
+          renderizarFrameInstante(tempo);
+          if (outCanvas !== domCanvasFallback) {
+            domCtxFallback.drawImage(outCanvas, 0, 0);
+          }
+        }
+
         mimeType = 'video/mp4; codecs="avc1.640028"';
         extensao = 'mp4';
         if (!MediaRecorder.isTypeSupported(mimeType)) {
@@ -3468,16 +3662,23 @@ Prompt: Two round white pods shooting through outer space as a colossal crimson 
           }
         }
 
-        // Conecta o áudio sintetizado no stream gravado
+        // Conecta o áudio base em loop nativo (sem clonar memória) no stream gravado
         let audioCtxFallback = null;
         let audioTrackFallback = null;
-        if (audioBufferVideo) {
+        if (dadosBaseAudio && dadosBaseAudio.audioBufferBase) {
           try {
             audioCtxFallback = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 44100 });
             const sourceNode = audioCtxFallback.createBufferSource();
-            sourceNode.buffer = audioBufferVideo;
+            sourceNode.buffer = dadosBaseAudio.audioBufferBase;
+            sourceNode.loop = true;
+            const gainNode = audioCtxFallback.createGain();
+            gainNode.gain.setValueAtTime(1.0, 0);
+            const fadeStart = Math.max(0, duracaoTotal - 1.5);
+            gainNode.gain.setValueAtTime(1.0, fadeStart);
+            gainNode.gain.linearRampToValueAtTime(0.001, duracaoTotal);
             const destNode = audioCtxFallback.createMediaStreamDestination();
-            sourceNode.connect(destNode);
+            sourceNode.connect(gainNode);
+            gainNode.connect(destNode);
             sourceNode.start(0);
             audioTrackFallback = destNode.stream.getAudioTracks()[0];
           } catch (e) {
@@ -3485,7 +3686,7 @@ Prompt: Two round white pods shooting through outer space as a colossal crimson 
           }
         }
 
-        const streamTracks = [...outCanvas.captureStream(fps).getVideoTracks()];
+        const streamTracks = [...domCanvasFallback.captureStream(fps).getVideoTracks()];
         if (audioTrackFallback) {
           streamTracks.push(audioTrackFallback);
         }
@@ -3519,11 +3720,11 @@ Prompt: Two round white pods shooting through outer space as a colossal crimson 
 
           const elapsed = (performance.now() - startTime) / 1000;
           if (elapsed >= duracaoTotal) {
-            renderizarFrameInstante(duracaoTotal);
+            renderizarFrameDomFallback(duracaoTotal);
             break;
           }
 
-          renderizarFrameInstante(elapsed);
+          renderizarFrameDomFallback(elapsed);
 
           const pct = Math.min(95, Math.round(25 + ((elapsed / duracaoTotal) * 70)));
           progressFill.style.width = `${pct}%`;
@@ -3547,6 +3748,18 @@ Prompt: Two round white pods shooting through outer space as a colossal crimson 
         }
         statusText.innerText = "Processando vídeo final com áudio...";
         videoBlob = await gravacaoPromise;
+      }
+
+      // Libera imediatamente os ImageBitmaps temporários da GPU para não pesar no celular após exportar
+      for (const c of cardsParaVideo) {
+        if (c._cachedBitmap && typeof c._cachedBitmap.close === 'function') {
+          try { c._cachedBitmap.close(); } catch (e) {}
+        }
+        if (c._cachedTxtBitmap && typeof c._cachedTxtBitmap.close === 'function') {
+          try { c._cachedTxtBitmap.close(); } catch (e) {}
+        }
+        c._cachedBitmap = null;
+        c._cachedTxtBitmap = null;
       }
 
       if (wakeLock) {
@@ -3758,6 +3971,7 @@ Prompt: Two round white pods shooting through outer space as a colossal crimson 
       ];
 
       resetScroll();
+      if (typeof thumbState !== 'undefined') thumbState.hasAutoAnalyzed = false;
       renderEditor();
       renderPreview();
       dispararAutoSave();
@@ -3770,29 +3984,42 @@ Prompt: Two round white pods shooting through outer space as a colossal crimson 
        ======================================================== */
     let thumbState = {
       panels: [
-        { cardIndex: 0, customImage: null, hook: "Best Friends?", offsetY: 0.5 },
-        { cardIndex: 1, customImage: null, hook: "The Ultimate Duo!", offsetY: 0.5 },
-        { cardIndex: 2, customImage: null, hook: "Universe Protector", offsetY: 0.5 }
+        { cardIndex: 0, customImage: null, hook: "Best Friends?", alternatives: [], offsetY: 0.5 },
+        { cardIndex: 1, customImage: null, hook: "The Ultimate Duo!", alternatives: [], offsetY: 0.5 },
+        { cardIndex: 2, customImage: null, hook: "Universe Protector", alternatives: [], offsetY: 0.5 }
       ],
-      imgElementsCache: {}
+      imgElementsCache: {},
+      hasAutoAnalyzed: false
     };
+
+    function isCardSubscribeOuMeta(card) {
+      if (!card) return true;
+      if (card._isSubscribeCard) return true;
+      const t = (card.text || '').trim().toLowerCase();
+      const ti = (card.title || '').trim().toLowerCase();
+      return t === 'subscribe' || t.includes('🔔 subscribe') || ti.includes('subscribe');
+    }
 
     function abrirModalThumbnailGokuShow() {
       const modal = document.getElementById('modalThumbnailGokuShow');
       if (!modal) return;
 
-      // Popula selects de cards
+      // Popula selects de cards ignorando visualmente ou marcando cards de Subscribe
       atualizarSelectsCardsThumbnail();
 
-      // Se temos cards e os índices padrão não foram ajustados pelo usuário
-      if (cards && cards.length > 0) {
-        const n = cards.length;
-        if (thumbState.panels[0].cardIndex >= n) thumbState.panels[0].cardIndex = 0;
-        if (thumbState.panels[1].cardIndex >= n) thumbState.panels[1].cardIndex = Math.min(n - 1, Math.floor(n / 2));
-        if (thumbState.panels[2].cardIndex >= n) thumbState.panels[2].cardIndex = Math.max(0, n - 1);
+      // Se temos cards e ainda não analisou (ou se algum painel está apontando para o card Subscribe), roda análise inteligente
+      const apontandoSubscribe = thumbState.panels.some(p => isCardSubscribeOuMeta(cards[p.cardIndex]));
+      const ganchosPadraoGenericos = thumbState.panels[0].hook === "Best Friends?" && thumbState.panels[1].hook === "The Ultimate Duo!";
 
-        // Atualiza selects nos inputs
+      if (cards && cards.length > 0 && (!thumbState.hasAutoAnalyzed || apontandoSubscribe || ganchosPadraoGenericos)) {
+        thumbState.hasAutoAnalyzed = true;
+        // Aplica heurística instantânea e se tiver API key analisa com IA
+        const heuristicaInicial = analisarNarrativaHeuristicaGokuShow(cards);
+        aplicarResultadoThumbnailNosPaineis(heuristicaInicial, false);
+      } else if (cards && cards.length > 0) {
+        const n = cards.length;
         for (let i = 0; i < 3; i++) {
+          if (thumbState.panels[i].cardIndex >= n) thumbState.panels[i].cardIndex = Math.min(n - 1, i);
           const sel = document.getElementById(`thumbCardSelect${i}`);
           if (sel) sel.value = thumbState.panels[i].cardIndex;
           const inp = document.getElementById(`thumbHookText${i}`);
@@ -3801,6 +4028,7 @@ Prompt: Two round white pods shooting through outer space as a colossal crimson 
           if (rng) rng.value = Math.round(thumbState.panels[i].offsetY * 100);
           const lbl = document.getElementById(`thumbOffsetYVal${i}`);
           if (lbl) lbl.innerText = `${Math.round(thumbState.panels[i].offsetY * 100)}%`;
+          renderizarChipsAlternativasPainel(i);
         }
       }
 
@@ -3831,8 +4059,11 @@ Prompt: Two round white pods shooting through outer space as a colossal crimson 
         cards.forEach((card, idx) => {
           const opt = document.createElement('option');
           opt.value = idx;
-          const resumo = (card.text || card.title || `Cena ${idx + 1}`).substring(0, 32);
-          opt.innerText = `${card.title || `Cena ${idx + 1}`}: ${resumo}${card.text && card.text.length > 32 ? '...' : ''}`;
+          const isSub = isCardSubscribeOuMeta(card);
+          const resumo = (card.text || card.title || `Cena ${idx + 1}`).substring(0, 38);
+          opt.innerText = isSub
+            ? `🚫 [Card Subscribe - Evitar na Thumb]`
+            : `${card.title || `Cena ${idx + 1}`}: ${resumo}${card.text && card.text.length > 38 ? '...' : ''}`;
           select.appendChild(opt);
         });
 
@@ -3842,10 +4073,51 @@ Prompt: Two round white pods shooting through outer space as a colossal crimson 
       }
     }
 
+    function renderizarChipsAlternativasPainel(panelIndex) {
+      const container = document.getElementById(`thumbHookChips${panelIndex}`);
+      if (!container) return;
+      container.innerHTML = '';
+      const alts = thumbState.panels[panelIndex].alternatives || [];
+      if (alts.length === 0) return;
+
+      alts.forEach(altText => {
+        if (!altText) return;
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        const isCurrent = (thumbState.panels[panelIndex].hook || '').trim().toLowerCase() === altText.trim().toLowerCase();
+        btn.style.cssText = `background: ${isCurrent ? 'rgba(245, 158, 11, 0.28)' : '#1c212c'}; border: 1px solid ${isCurrent ? '#f59e0b' : '#2e3646'}; color: ${isCurrent ? '#fde68a' : '#cbd5e1'}; font-size: 10.5px; font-weight: 700; padding: 3px 8px; border-radius: 12px; cursor: pointer; transition: all 0.15s;`;
+        btn.innerText = `✨ ${altText}`;
+        btn.title = 'Clique para usar este gancho no quadro';
+        btn.onclick = () => {
+          thumbState.panels[panelIndex].hook = altText;
+          const inp = document.getElementById(`thumbHookText${panelIndex}`);
+          if (inp) inp.value = altText;
+          renderizarChipsAlternativasPainel(panelIndex);
+          renderizarThumbnailGokuCanvas();
+        };
+        container.appendChild(btn);
+      });
+    }
+
     function selecionarCardPainelThumb(panelIndex, cardIndexVal) {
       const idx = parseInt(cardIndexVal, 10) || 0;
       thumbState.panels[panelIndex].cardIndex = idx;
       thumbState.panels[panelIndex].customImage = null;
+
+      // Ao trocar a cena manualmente, gera sugestões de ganchos específicas para a nova cena escolhida!
+      if (cards && cards[idx] && !isCardSubscribeOuMeta(cards[idx])) {
+        const papeis = ['inicio', 'meio', 'fim'];
+        const idioma = obterIdiomaPreferidoThumbnail(cards);
+        const ganchosCena = gerarGanchosParaCenaEspecifica(cards[idx], papeis[panelIndex] || 'meio', idioma);
+        if (ganchosCena.length > 0) {
+          thumbState.panels[panelIndex].hook = ganchosCena[0];
+          thumbState.panels[panelIndex].alternatives = ganchosCena;
+          const inp = document.getElementById(`thumbHookText${panelIndex}`);
+          if (inp) inp.value = ganchosCena[0];
+          renderizarChipsAlternativasPainel(panelIndex);
+        }
+      }
+
       renderizarThumbnailGokuCanvas();
     }
 
@@ -4083,7 +4355,70 @@ Prompt: Two round white pods shooting through outer space as a colossal crimson 
       }
     }
 
-    // IDENTIFICAÇÃO DAS MELHORES CENAS COM IA (GOKU SHOW STORY ANALYZER)
+    // DETECÇÃO DE IDIOMA DA HISTÓRIA (PORTUGUÊS vs INGLÊS)
+    function detectarIdiomaHistoria(cenas) {
+      let ptCount = 0;
+      let enCount = 0;
+      const ptWords = /\b(não|para|com|como|mais|pelo|pela|dos|das|seu|sua|ele|ela|eles|quando|depois|antes|contra|poder|batalha|planeta|universo|história|filho|irmão|segredo|todos|tudo|sempre|nunca|morte|vida|guerreiro)\b/gi;
+      const enWords = /\b(the|and|with|from|that|this|his|her|their|when|after|before|against|power|battle|planet|universe|story|son|brother|secret|all|everything|always|never|death|life|warrior|into|upon|refusing)\b/gi;
+
+      for (const c of cenas) {
+        if (isCardSubscribeOuMeta(c)) continue;
+        const txt = (c.text || '');
+        const mPt = txt.match(ptWords);
+        const mEn = txt.match(enWords);
+        if (mPt) ptCount += mPt.length;
+        if (mEn) enCount += mEn.length;
+        if (/[ãõçáéíóúâêô]/i.test(txt)) ptCount += 2;
+      }
+      return ptCount > enCount ? 'pt' : 'en';
+    }
+
+    function obterIdiomaPreferidoThumbnail(cenas) {
+      const sel = document.getElementById('thumbHookLangSelect');
+      const val = sel ? sel.value : 'auto';
+      if (val === 'pt' || val === 'en') return val;
+      return detectarIdiomaHistoria(cenas);
+    }
+
+    function aplicarResultadoThumbnailNosPaineis(resultado, exibirToast = true) {
+      if (!resultado || !resultado.painel1 || !resultado.painel2 || !resultado.painel3) return;
+      const paineis = [resultado.painel1, resultado.painel2, resultado.painel3];
+
+      for (let i = 0; i < 3; i++) {
+        const p = paineis[i];
+        let idx = typeof p.cardIndex === 'number' ? p.cardIndex : i;
+        idx = Math.max(0, Math.min(cards.length - 1, idx));
+
+        // Blindagem extra: se por acaso o índice apontar para um card Subscribe, desvia para a cena válida mais próxima
+        if (isCardSubscribeOuMeta(cards[idx])) {
+          const candidatoAntes = idx > 0 && !isCardSubscribeOuMeta(cards[idx - 1]) ? idx - 1 : null;
+          const candidatoDepois = idx < cards.length - 1 && !isCardSubscribeOuMeta(cards[idx + 1]) ? idx + 1 : null;
+          if (candidatoDepois !== null) idx = candidatoDepois;
+          else if (candidatoAntes !== null) idx = candidatoAntes;
+        }
+
+        thumbState.panels[i].cardIndex = idx;
+        thumbState.panels[i].hook = p.gancho || thumbState.panels[i].hook;
+        thumbState.panels[i].alternatives = Array.isArray(p.alternativas) && p.alternativas.length > 0
+          ? p.alternativas
+          : [p.gancho].filter(Boolean);
+        thumbState.panels[i].customImage = null;
+
+        const sel = document.getElementById(`thumbCardSelect${i}`);
+        if (sel) sel.value = idx;
+        const inp = document.getElementById(`thumbHookText${i}`);
+        if (inp) inp.value = thumbState.panels[i].hook;
+        renderizarChipsAlternativasPainel(i);
+      }
+
+      renderizarThumbnailGokuCanvas();
+      if (exibirToast) {
+        mostrarToast("🔥 Melhores cenas e ganchos virais aplicados com sucesso!");
+      }
+    }
+
+    // IDENTIFICAÇÃO DAS MELHORES CENAS COM IA (GOKU SHOW STORY ANALYZER 2.0)
     async function identificarMelhoresCenasComIA() {
       if (!cards || cards.length === 0) {
         mostrarToast("Crie ou cole seu roteiro com cenas primeiro para a IA analisar!", true);
@@ -4098,131 +4433,359 @@ Prompt: Two round white pods shooting through outer space as a colossal crimson 
       if (btnAnalyze) btnAnalyze.disabled = true;
 
       const activeKey = serverEnvConfig.apiKey || localStorage.getItem('matawas_gemini_api_key') || '';
+      const idiomaAlvo = obterIdiomaPreferidoThumbnail(cards);
       let resultado = null;
 
-      if (activeKey) {
-        try {
-          if (statusText) statusText.innerText = "🧠 Analisando narrativa dramática com Google Gemini...";
-          const llmModel = serverEnvConfig.llmModel || 'gemini-2.5-flash';
-          const url = `https://generativelanguage.googleapis.com/v1beta/models/${llmModel}:generateContent?key=${activeKey}`;
+      // Filtra apenas cenas reais da história (nunca manda o card Subscribe para a IA escolher!)
+      const cenasReais = [];
+      cards.forEach((c, realIdx) => {
+        if (!isCardSubscribeOuMeta(c)) {
+          cenasReais.push({ realIdx, card: c });
+        }
+      });
 
-          const resumoHistoria = cards.map((c, i) => 
-            `[Cena ${i + 1}]
-Legenda: ${c.text || ''}
-Visual: ${c._promptOriginal || ''}`
-          ).join('\n\n');
+      if (activeKey && cenasReais.length > 0) {
+        const resumoHistoria = cenasReais.map((item) =>
+          `[cardIndex: ${item.realIdx}] (${item.card.title || `Cena ${item.realIdx + 1}`})
+Legenda da história: "${item.card.text || ''}"
+Descrição visual da cena: "${item.card._promptOriginal || ''}"`
+        ).join('\n\n');
 
-          const promptInstrucao = `Você é o estrategista oficial de thumbnails virais para canais de Dragon Ball "What If" no estilo exato do canal Goku Show.
-Analise a história a seguir que contém ${cards.length} cenas:
+        const instrucaoIdioma = idiomaAlvo === 'pt'
+          ? 'Escreva os ganchos em PORTUGUÊS (2 a 3 palavras de alto impacto, ex: "Traição de Freeza?", "Pacto de Irmãos!", "Poder Supremo!").'
+          : 'Write the hooks in ENGLISH in the exact style of the Goku Show channel (2 to 3 punchy words, e.g., "Frieza\'s Betrayal?", "Secret Brother!", "Final Supernova!").';
+
+        const promptInstrucao = `Você é o diretor de arte e estrategista de thumbnails virais do canal "Goku Show" / "Alternative Dragon Balls".
+Analise todas as cenas reais da história abaixo:
 
 ${resumoHistoria}
 
-Sua missão é escolher EXATAMENTE 3 CENAS para a Thumbnail oficial de 3 quadros (16:9) do Goku Show:
-1. Quadro 1 (Início/Origem/Gancho): Momento inicial impactante, premissa inusitada ou nascimento/origem (ex: "Namekian Goku", "Best Friends?", "Rebel Father!").
-2. Quadro 2 (Reviravolta/Vínculo/Conflito): Reviravolta chocante, interação inesperada entre personagens, pacto ou momento dramático (ex: "The Ultimate Duo!", "Unexpected Love", "Brothers' Vow!").
-3. Quadro 3 (Clímax/Poder Máximo/Showdown): Batalha decisiva, transformação super saiyan, explosão ou destruição épica (ex: "Super Namek!", "Universe Protector", "Planet Explodes!").
+REGRAS DE OURO PARA ESCOLHER AS 3 MELHORES CENAS E LEGENDAS:
+1. NÃO escolha simplesmente a primeira, a do meio e a última cena por preguiça! Analise TODAS as cenas e selecione as 3 que têm o MAIOR IMPACTO EMOCIONAL, VISUAL e NARRATIVO:
+   - painel1 (Ato 1 - O Gancho / Segredo / Origem): A cena que apresenta o mistério inicial, a descoberta chocante ou a decisão que muda o destino.
+   - painel2 (Ato 2 - A Reviravolta / Emoção / Pacto): O momento mais emocionante de vínculo entre personagens, promessa dramática, despedida, treinamento secreto ou traição.
+   - painel3 (Ato 3 - O Clímax / Poder / Destino): A cena mais épica de batalha, transformação, explosão planetária, fuga desesperada ou confronto final.
+2. Os 3 quadros DEVEM ter cardIndex diferentes e em ordem cronológica (painel1.cardIndex < painel2.cardIndex < painel3.cardIndex, sempre usando os valores exatos de [cardIndex: X] listados acima).
+3. GANCHOS ESPECÍFICOS DA HISTÓRIA (PROIBIDO USAR FRASES GENÉRICAS):
+   - NUNCA use frases vagas como "Best Friends?", "The Ultimate Duo!", "Universe Protector" ou "Unexpected Twist!" se elas não refletirem literalmente os personagens e acontecimentos da cena.
+   - Cite os nomes dos personagens ou eventos reais da cena (ex: "Bardock's Secret?", "Saving Raditz!", "Gine's Tears!", "Daichi's Limit!", "Twin Prodigies!").
+   - Cada gancho deve ter de 2 a 3 palavras curtas, fortes, terminando com "?" ou "!".
+   - ${instrucaoIdioma}
+4. Para cada painel, forneça também "alternativas": uma lista com 3 opções de ganchos curtos baseados naquela cena para o usuário poder escolher com 1 clique.
 
-Para cada um dos 3 quadros, forneça:
-- cardIndex: o índice da cena (inteiro de 0 a ${cards.length - 1})
-- gancho: um gancho de no MÁXIMO 2 a 3 palavras no estilo exato do Goku Show, com '?' ou '!'.
-
-Retorne ESTRITAMENTE um JSON válido com a estrutura:
+Retorne ESTRITAMENTE um objeto JSON válido neste formato:
 {
-  "painel1": { "cardIndex": 0, "gancho": "..." },
-  "painel2": { "cardIndex": 1, "gancho": "..." },
-  "painel3": { "cardIndex": 2, "gancho": "..." }
+  "painel1": { "cardIndex": 0, "gancho": "...", "alternativas": ["...", "...", "..."] },
+  "painel2": { "cardIndex": 2, "gancho": "...", "alternativas": ["...", "...", "..."] },
+  "painel3": { "cardIndex": 4, "gancho": "...", "alternativas": ["...", "...", "..."] }
 }`;
 
-          const resp = await fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              contents: [{ parts: [{ text: promptInstrucao }] }]
-            })
-          });
+        // Tenta modelos do Gemini em cascata (evita falha caso o modelo do .env não responda)
+        const modelosCandidatos = [
+          'gemini-2.5-flash',
+          'gemini-2.0-flash',
+          serverEnvConfig.llmModel,
+          'gemini-1.5-flash'
+        ].filter((v, idx, arr) => v && arr.indexOf(v) === idx);
 
-          const data = await resp.json();
-          const respostaTexto = data.candidates?.[0]?.content?.parts?.[0]?.text;
-          if (respostaTexto) {
-            const limpo = respostaTexto.replace(/```json/g, '').replace(/```/g, '').trim();
-            resultado = JSON.parse(limpo);
+        for (const modelName of modelosCandidatos) {
+          try {
+            if (statusText) statusText.innerText = `🧠 Analisando melhores cenas e legendas com IA (${modelName})...`;
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${activeKey}`;
+            const resp = await fetch(url, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                contents: [{ parts: [{ text: promptInstrucao }] }],
+                generationConfig: {
+                  temperature: 0.4,
+                  responseMimeType: "application/json"
+                }
+              })
+            });
+
+            if (!resp.ok) continue;
+            const data = await resp.json();
+            const respostaTexto = data.candidates?.[0]?.content?.parts?.[0]?.text;
+            if (respostaTexto) {
+              const limpo = respostaTexto.replace(/```json/gi, '').replace(/```/g, '').trim();
+              const parsed = JSON.parse(limpo);
+              if (parsed && parsed.painel1 && parsed.painel2 && parsed.painel3) {
+                resultado = parsed;
+                break;
+              }
+            }
+          } catch (err) {
+            console.warn(`Tentativa com modelo ${modelName} falhou:`, err);
           }
-        } catch (err) {
-          console.warn("IA Gemini para Thumbnail encontrou erro, usando analisador heurístico:", err);
         }
       }
 
-      // Se não tem chave ou a IA falhou, usa o analisador heurístico de alto impacto
+      // Se não tem chave ou a API falhou, usa o Motor Narrativo Inteligente 2.0 (100% contextualizado na história!)
       if (!resultado || !resultado.painel1 || !resultado.painel2 || !resultado.painel3) {
-        if (statusText) statusText.innerText = "⚡ Identificando melhores cenas pelo fluxo narrativo...";
-        resultado = analisarNarrativaHeuristicaGokuShow(cards);
+        if (statusText) statusText.innerText = "⚡ Pontuando cenas dramáticas e extraindo ganchos da história...";
+        resultado = analisarNarrativaHeuristicaGokuShow(cards, idiomaAlvo);
       }
 
-      // Aplica os resultados nos 3 painéis
-      if (resultado && resultado.painel1 && resultado.painel2 && resultado.painel3) {
-        thumbState.panels[0].cardIndex = Math.max(0, Math.min(cards.length - 1, resultado.painel1.cardIndex || 0));
-        thumbState.panels[0].hook = resultado.painel1.gancho || "Best Friends?";
-        thumbState.panels[0].customImage = null;
-
-        thumbState.panels[1].cardIndex = Math.max(0, Math.min(cards.length - 1, resultado.painel2.cardIndex || Math.floor(cards.length / 2)));
-        thumbState.panels[1].hook = resultado.painel2.gancho || "The Ultimate Duo!";
-        thumbState.panels[1].customImage = null;
-
-        thumbState.panels[2].cardIndex = Math.max(0, Math.min(cards.length - 1, resultado.painel3.cardIndex || (cards.length - 1)));
-        thumbState.panels[2].hook = resultado.painel3.gancho || "Universe Protector";
-        thumbState.panels[2].customImage = null;
-
-        // Atualiza campos na tela
-        for (let i = 0; i < 3; i++) {
-          const sel = document.getElementById(`thumbCardSelect${i}`);
-          if (sel) sel.value = thumbState.panels[i].cardIndex;
-          const inp = document.getElementById(`thumbHookText${i}`);
-          if (inp) inp.value = thumbState.panels[i].hook;
-        }
-
-        await renderizarThumbnailGokuCanvas();
-        mostrarToast("🔥 Thumbnail Goku Show gerada com sucesso pela IA!");
-      }
+      thumbState.hasAutoAnalyzed = true;
+      aplicarResultadoThumbnailNosPaineis(resultado, true);
 
       if (statusArea) statusArea.style.display = 'none';
       if (btnAnalyze) btnAnalyze.disabled = false;
     }
 
-    // ANALISADOR HEURÍSTICO OFFLINE (SELEÇÃO INTELIGENTE DE INÍCIO, MEIO E FIM)
-    function analisarNarrativaHeuristicaGokuShow(cenas) {
-      const n = cenas.length;
-      const idx1 = 0;
-      const idx2 = Math.min(n - 1, Math.max(0, Math.floor(n / 2)));
-      const idx3 = Math.max(0, n - 1);
+    // MOTOR NARRATIVO INTELIGENTE 2.0 (PONTUAÇÃO DE IMPACTO DRAMÁTICO + EXTRAÇÃO CONTEXTUAL REAL)
+    function extrairEntidadesCena(textoCompleto) {
+      if (!textoCompleto) return [];
+      const ignore = new Set([
+        'Cena', 'Scene', 'Quadro', 'Card', 'Legenda', 'Prompt', 'The', 'And', 'With', 'From', 'Into', 'Upon',
+        'When', 'After', 'Before', 'While', 'Refusing', 'Standing', 'Walking', 'Looking', 'Wearing', 'Pulling',
+        'Placing', 'Shooting', 'Two', 'One', 'Three', 'His', 'Her', 'Their', 'Planet', 'Planeta', 'No', 'Na',
+        'Nos', 'Nas', 'Um', 'Uma', 'Para', 'Com', 'Por', 'Mas', 'Sem', 'Sob', 'Sobre', 'Como', 'Quando',
+        'Lembrando', 'Unidos', 'Enquanto', 'Depois', 'Antes', 'Todos', 'Tudo', 'Onde', 'Novo', 'Nova', 'Escreva'
+      ]);
+      const matches = textoCompleto.match(/\b[A-ZÀ-Ú][a-zà-ú]{2,}\b/g) || [];
+      const unicos = [];
+      for (const m of matches) {
+        const clean = m.replace(/['’]s$/i, '');
+        if (!ignore.has(clean) && !unicos.includes(clean)) {
+          unicos.push(clean);
+        }
+      }
+      return unicos;
+    }
 
-      function extrairGanchoHeuristico(cena, tipo) {
-        const txt = ((cena.title || '') + ' ' + (cena.text || '') + ' ' + (cena._promptOriginal || '')).toLowerCase();
-        if (tipo === 'inicio') {
-          if (txt.includes('frieza') || txt.includes('freeza')) return "Frieza's Secret?";
-          if (txt.includes('namek')) return "Namekian Goku";
-          if (txt.includes('saiyan') || txt.includes('bardock')) return "Rebel Saiyan?";
-          if (txt.includes('baby') || txt.includes('infant') || txt.includes('kakarot')) return "Saiyan Baby!";
-          if (txt.includes('vegeta')) return "Prince Vegeta?";
-          return "The Beginning?";
-        } else if (tipo === 'meio') {
-          if (txt.includes('brother') || txt.includes('raditz')) return "Brothers' Vow!";
-          if (txt.includes('friend') || txt.includes('duo') || txt.includes('alliance')) return "The Ultimate Duo!";
-          if (txt.includes('love') || txt.includes('weep') || txt.includes('tear') || txt.includes('gine')) return "Heartfelt Secret!";
-          if (txt.includes('train') || txt.includes('secret')) return "Hidden Power!";
-          return "Unexpected Twist!";
-        } else {
-          if (txt.includes('supernova') || txt.includes('planet') || txt.includes('explode')) return "Planet Explodes!";
-          if (txt.includes('super') || txt.includes('transformation')) return "Super Namek!";
-          if (txt.includes('escape') || txt.includes('pod') || txt.includes('cosmos')) return "Final Escape!";
-          if (txt.includes('protector') || txt.includes('universe') || txt.includes('save')) return "Universe Protector";
-          return "Final Showdown!";
+    function gerarGanchosParaCenaEspecifica(cena, papel, idioma = 'en') {
+      if (!cena) return idioma === 'pt' ? ["Cena Épica!"] : ["Epic Scene!"];
+      const legenda = (cena.text || '').trim();
+      const prompt = (cena._promptOriginal || '').trim();
+      const combinado = `${legenda} ${prompt}`;
+      const lower = combinado.toLowerCase();
+      const entidades = extrairEntidadesCena(legenda).concat(extrairEntidadesCena(prompt));
+      const char1 = entidades[0] || '';
+      const char2 = entidades.find(e => e !== char1) || '';
+
+      const opcoes = [];
+
+      if (idioma === 'pt') {
+        // Regras contextuais ricas em Português baseadas no que realmente acontece na cena
+        if (/treach|traiç|engan|embosc|secret|segredo|uncover|descobr/i.test(lower)) {
+          if (char1) opcoes.push(`Segredo de ${char1}?`, `Traição Descoberta!`);
+          else opcoes.push(`Traição Secreta?`, `Segredo Revelado!`);
+        }
+        if (/frieza|freeza/i.test(lower)) {
+          opcoes.push(`Plano de Freeza?`, `Ameaça de Freeza!`);
+        }
+        if (/brother|irmão|raditz|gêmeo|twin/i.test(lower)) {
+          if (char1 && char2) opcoes.push(`${char1} e ${char2}!`);
+          opcoes.push(`Pacto de Irmãos!`, `Salvo pelo Irmão?`, `Dupla Imparável!`);
+        }
+        if (/wept|tear|chor|lágrima|gine|mãe|mother|despedid/i.test(lower)) {
+          if (char1) opcoes.push(`Lágrimas de ${char1}!`, `Adeus de ${char1}?`);
+          opcoes.push(`Despedida Trágica!`, `Amor de Mãe!`);
+        }
+        if (/protect|proteg|command|promess|jura|vow|bloodline/i.test(lower)) {
+          if (char1) opcoes.push(`Ordem de ${char1}!`, `Promessa de ${char1}!`);
+          opcoes.push(`Missão de Sangue!`, `Proteja Seu Irmão!`);
+        }
+        if (/pod|nave|escap|fug|cosmos|espaço|launch/i.test(lower)) {
+          opcoes.push(`Duas Naves?!`, `Fuga no Espaço!`, `Destino Mudado!`);
+        }
+        if (/supernova|explod|incinerat|destru/i.test(lower)) {
+          opcoes.push(`Fim do Planeta!`, `Supernova Mortal!`, `Destruição Total!`);
+        }
+        if (/trein|train|limite|limit|superar|poder|power/i.test(lower)) {
+          if (char1) opcoes.push(`Poder de ${char1}!`, `${char1} Sem Limites!`);
+          opcoes.push(`Além do Limite!`, `Treino Secreto!`);
+        }
+        if (/torneio|tournament|velocidade|speed|surpreend/i.test(lower)) {
+          opcoes.push(`Choque no Torneio!`, `Velocidade Absurda!`, `Todos Chocados!`);
+        }
+        if (/unidos|united|lenda|legend|inimigo|enemy|batalha|battle/i.test(lower)) {
+          if (char1) opcoes.push(`A Lenda ${char1}!`);
+          opcoes.push(`Nova Lenda Saiyajin!`, `Batalha Final!`, `Ninguém Pode Deter!`);
+        }
+
+        // Extração direta das palavras mais fortes da própria legenda da cena
+        const palavrasLegenda = legenda
+          .replace(/[^\w\sà-úÀ-Ú]/g, '')
+          .split(/\s+/)
+          .filter(w => w.length > 3 && !/^(para|como|mais|pelo|pela|quando|depois|antes|todos|tudo|sobre|entre)$/i.test(w));
+
+        if (char1 && palavrasLegenda.length >= 2) {
+          const verboOuFoco = palavrasLegenda.find(w => w.toLowerCase() !== char1.toLowerCase()) || palavrasLegenda[0];
+          const cap = verboOuFoco.charAt(0).toUpperCase() + verboOuFoco.slice(1).toLowerCase();
+          opcoes.push(`${char1}: ${cap}!`);
+        }
+        if (char1 && char2) {
+          opcoes.push(`${char1} & ${char2}?`);
+        } else if (char1) {
+          opcoes.push(`O Destino de ${char1}?`, `A Escolha de ${char1}!`);
+        }
+
+        if (opcoes.length === 0) {
+          if (papel === 'inicio') opcoes.push("O Início de Tudo?", "Segredo Revelado!", "Nova História!");
+          else if (papel === 'meio') opcoes.push("Reviravolta Épica!", "Decisão Chocante!", "O Grande Pacto!");
+          else opcoes.push("Clímax Explosivo!", "Poder Máximo!", "O Destino Final!");
+        }
+      } else {
+        // Regras contextuais ricas em Inglês (Estilo Oficial Goku Show) baseadas no texto real da cena
+        if (/treach|betray|impending|uncover|secret|plot/i.test(lower)) {
+          if (/frieza|freeza/i.test(lower)) opcoes.push("Frieza's Betrayal?", "Frieza's Dark Plot!");
+          if (char1) opcoes.push(`${char1} Knows?!`, `${char1}'s Discovery!`);
+          opcoes.push("Deadly Secret?", "Uncovered Plot!");
+        }
+        if (/raditz/i.test(lower) && /home|secret|brought|pull/i.test(lower)) {
+          opcoes.push("Saving Raditz!", "Secret Rescue?", "Raditz Returns!");
+        }
+        if (/two\s+space\s+pods|two\s+pods|two\s+round/i.test(lower)) {
+          opcoes.push("Two Space Pods?!", "Double Escape!", "Saving Both Sons!");
+        }
+        if (/gine|wept|tear|cry|mother/i.test(lower)) {
+          if (/gine/i.test(lower)) opcoes.push("Gine's Tears!", "Gine's Secret?", "Mother's Sacrifice!");
+          else opcoes.push("Tearful Goodbye!", "Heartbreaking Choice!");
+        }
+        if (/protect.*brother|command.*raditz|shoulder|kneel/i.test(lower)) {
+          if (char1 && char2) opcoes.push(`${char1}'s Final Order!`, `Protect Your Brother!`);
+          else opcoes.push("Protect Kakarot!", "A Father's Vow!", "Brothers Forever!");
+        }
+        if (/supernova|incinerat|explode|destroy.*planet/i.test(lower)) {
+          opcoes.push("Escaping Supernova!", "Planet Destroyed!", "Final Moments!");
+        }
+        if (/train|limit|power|surpass|trein|poder|limite/i.test(lower)) {
+          if (char1) opcoes.push(`${char1}'s True Power!`, `Breaking Limits!`);
+          else opcoes.push("Breaking All Limits!", "Hidden Potential?");
+        }
+        if (/tournament|torneio|twin|gêmeo|speed|velocidade/i.test(lower)) {
+          opcoes.push("Twin Prodigies!", "Shocking Speed!", "Tournament Shock!");
+        }
+        if (/united|unidos|legend|lenda|unstoppable|batalha|battle/i.test(lower)) {
+          opcoes.push("New Saiyan Legend!", "Unstoppable Duo!", "Final Showdown!");
+        }
+
+        // Ganchos dinâmicos com os personagens reais encontrados na cena
+        if (char1 && char2) {
+          opcoes.push(`${char1} & ${char2}!`, `${char1} Saves ${char2}?`);
+        } else if (char1) {
+          opcoes.push(`${char1}'s Choice?`, `${char1}'s Fate!`);
+        }
+
+        if (opcoes.length === 0) {
+          if (papel === 'inicio') opcoes.push("Fate Changed?", "A New Path!", "Hidden Truth?");
+          else if (papel === 'meio') opcoes.push("Shocking Twist!", "Unbreakable Bond!", "Fateful Decision!");
+          else opcoes.push("Final Climax!", "Ultimate Power!", "Destiny Fulfilled!");
         }
       }
 
+      // Remove duplicados mantendo no máximo 3 palavras por gancho
+      const limpos = [];
+      for (const op of opcoes) {
+        if (!limpos.includes(op)) limpos.push(op);
+      }
+      return limpos.slice(0, 4);
+    }
+
+    function analisarNarrativaHeuristicaGokuShow(cenas, idiomaForcado = null) {
+      const idioma = idiomaForcado || obterIdiomaPreferidoThumbnail(cenas);
+
+      // 1. Filtra apenas cenas reais (exclui totalmente o card de Subscribe!)
+      const validas = [];
+      cenas.forEach((c, idx) => {
+        if (!isCardSubscribeOuMeta(c)) {
+          validas.push({ idx, card: c });
+        }
+      });
+
+      if (validas.length === 0) {
+        return {
+          painel1: { cardIndex: 0, gancho: "The Beginning?", alternativas: ["The Beginning?"] },
+          painel2: { cardIndex: 0, gancho: "Shocking Twist!", alternativas: ["Shocking Twist!"] },
+          painel3: { cardIndex: 0, gancho: "Final Showdown!", alternativas: ["Final Showdown!"] }
+        };
+      }
+
+      if (validas.length < 3) {
+        const i0 = validas[0].idx;
+        const i1 = validas[Math.min(1, validas.length - 1)].idx;
+        const i2 = validas[validas.length - 1].idx;
+        const g0 = gerarGanchosParaCenaEspecifica(cenas[i0], 'inicio', idioma);
+        const g1 = gerarGanchosParaCenaEspecifica(cenas[i1], 'meio', idioma);
+        const g2 = gerarGanchosParaCenaEspecifica(cenas[i2], 'fim', idioma);
+        return {
+          painel1: { cardIndex: i0, gancho: g0[0], alternativas: g0 },
+          painel2: { cardIndex: i1, gancho: g1[0], alternativas: g1 },
+          painel3: { cardIndex: i2, gancho: g2[0], alternativas: g2 }
+        };
+      }
+
+      // 2. Pontua cada cena para os 3 atos dramáticos (Origem/Premissa, Reviravolta/Emoção, Clímax/Showdown)
+      const V = validas.length;
+      const scores = validas.map((item, pos) => {
+        const txt = `${item.card.text || ''} ${item.card._promptOriginal || ''}`.toLowerCase();
+        const ratio = pos / Math.max(1, V - 1); // 0.0 no início -> 1.0 no fim
+
+        let sInicio = 0;
+        let sMeio = 0;
+        let sFim = 0;
+
+        // Bônus posicional natural de narrativa em 3 atos
+        if (ratio <= 0.38) sInicio += 18;
+        if (pos === 0) sInicio += 10;
+        if (ratio >= 0.25 && ratio <= 0.78) sMeio += 18;
+        if (ratio >= 0.65) sFim += 18;
+        if (pos === V - 1) sFim += 12;
+
+        // Bônus semântico para Ato 1 (Descoberta, Segredo, Rebelião, Origem)
+        if (/uncover|treach|secret|segredo|descobr|impending|origin|baby|infant|born|planeta|planet|train|trein|frieza|freeza/i.test(txt)) {
+          sInicio += 20;
+        }
+        // Bônus semântico para Ato 2 (Reviravolta, Emoção, Irmãos, Lágrimas, Juramento, Decisão)
+        if (/secret|segredo|brought|pull|wept|tear|chor|lágrima|command|protect|proteg|brother|irmão|vow|promess|shoulder|kneel|surpreend|torneio|tournament|two pods|duas naves/i.test(txt)) {
+          sMeio += 24;
+        }
+        // Bônus semântico para Ato 3 (Clímax, Explosão, Supernova, Transformação, Fuga, Lenda)
+        if (/supernova|incinerat|explod|launch|cosmos|final|super|transformation|legend|lenda|unidos|united|battle|batalha|universe|universo|destroy|poder/i.test(txt)) {
+          sFim += 26;
+        }
+
+        // Bônus se o card já possui imagem gerada
+        if (item.card.image) {
+          sInicio += 5;
+          sMeio += 5;
+          sFim += 5;
+        }
+
+        return { pos, realIdx: item.idx, card: item.card, sInicio, sMeio, sFim };
+      });
+
+      // 3. Seleciona a melhor combinação (i < j < k) que maximiza a soma dramática total
+      let melhorCombo = [0, Math.floor(V / 2), V - 1];
+      let maiorSoma = -Infinity;
+
+      for (let i = 0; i < V - 2; i++) {
+        for (let j = i + 1; j < V - 1; j++) {
+          for (let k = j + 1; k < V; k++) {
+            const soma = scores[i].sInicio + scores[j].sMeio + scores[k].sFim;
+            if (soma > maiorSoma) {
+              maiorSoma = soma;
+              melhorCombo = [i, j, k];
+            }
+          }
+        }
+      }
+
+      const c1 = scores[melhorCombo[0]];
+      const c2 = scores[melhorCombo[1]];
+      const c3 = scores[melhorCombo[2]];
+
+      const ganchos1 = gerarGanchosParaCenaEspecifica(c1.card, 'inicio', idioma);
+      const ganchos2 = gerarGanchosParaCenaEspecifica(c2.card, 'meio', idioma);
+      const ganchos3 = gerarGanchosParaCenaEspecifica(c3.card, 'fim', idioma);
+
       return {
-        painel1: { cardIndex: idx1, gancho: extrairGanchoHeuristico(cenas[idx1], 'inicio') },
-        painel2: { cardIndex: idx2, gancho: extrairGanchoHeuristico(cenas[idx2], 'meio') },
-        painel3: { cardIndex: idx3, gancho: extrairGanchoHeuristico(cenas[idx3], 'fim') }
+        painel1: { cardIndex: c1.realIdx, gancho: ganchos1[0], alternativas: ganchos1 },
+        painel2: { cardIndex: c2.realIdx, gancho: ganchos2[0], alternativas: ganchos2 },
+        painel3: { cardIndex: c3.realIdx, gancho: ganchos3[0], alternativas: ganchos3 }
       };
     }
 
