@@ -948,8 +948,14 @@
         <h4 style="color:#2ed573; font-size:18px; margin:0 0 6px 0; font-weight:800;">Vídeo Concluído com Sucesso!</h4>
         <p style="font-size:12.5px; color:#94a3b8; margin:0 0 12px 0;">Assista a prévia abaixo e toque no botão verde para guardar na sua Galeria:</p>
 
-        <!-- Player de Pré-visualização com suporte total a iOS/Android -->
-        <video id="videoPreviewResult" controls playsinline webkit-playsinline style="width:100%; max-height:240px; border-radius:10px; background:#000; border:1px solid #282f3a; margin-bottom:14px; object-fit:contain;"></video>
+        <!-- Player de Pré-visualização (no celular carrega sob demanda para não estourar a RAM) -->
+        <div id="videoPreviewContainer" style="margin-bottom:14px;">
+          <video id="videoPreviewResult" controls playsinline webkit-playsinline preload="metadata" style="width:100%; max-height:240px; border-radius:10px; background:#000; border:1px solid #282f3a; object-fit:contain; display:none;"></video>
+          <button id="btnCarregarPreviewMobile" type="button" onclick="ativarPreviewVideoGerado()" style="width:100%; padding:10px 14px; font-size:13px; font-weight:700; background:#151922; color:#94a3b8; border:1px dashed #334155; border-radius:10px; cursor:pointer; display:none; align-items:center; justify-content:center; gap:8px;">
+            <span>▶️</span>
+            <span>Assistir Prévia do Vídeo (Opcional)</span>
+          </button>
+        </div>
 
         <!-- Botão Principal: Salvar Direto nas Fotos / Galeria -->
         <button id="btnSalvarFotos" type="button" onclick="salvarVideoGaleriaFotos()" style="width:100%; padding:15px; font-size:15px; font-weight:800; background:linear-gradient(135deg, #2ed573, #10b981); color:#ffffff; border:none; border-radius:10px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px; box-shadow:0 4px 16px rgba(46,213,115,0.4); margin-bottom:10px;">
@@ -2951,7 +2957,10 @@ Prompt: Two round white pods shooting through outer space as a colossal crimson 
       if (previewVideoEl) {
         previewVideoEl.pause();
         previewVideoEl.removeAttribute('src');
+        previewVideoEl.style.display = 'none';
       }
+      const btnPreviewMob = document.getElementById('btnCarregarPreviewMobile');
+      if (btnPreviewMob) btnPreviewMob.style.display = 'none';
       document.getElementById('videoModal').style.display = 'flex';
     }
 
@@ -2959,8 +2968,24 @@ Prompt: Two round white pods shooting through outer space as a colossal crimson 
       const previewVideoEl = document.getElementById('videoPreviewResult');
       if (previewVideoEl) {
         previewVideoEl.pause();
+        previewVideoEl.removeAttribute('src');
+        previewVideoEl.load();
       }
       document.getElementById('videoModal').style.display = 'none';
+    }
+
+    function ativarPreviewVideoGerado() {
+      const previewVideoEl = document.getElementById('videoPreviewResult');
+      const btnPreviewMob = document.getElementById('btnCarregarPreviewMobile');
+      if (previewVideoEl && ultimoVideoGeradoUrl) {
+        previewVideoEl.src = ultimoVideoGeradoUrl;
+        previewVideoEl.style.display = 'block';
+        previewVideoEl.load();
+        previewVideoEl.play().catch(() => {});
+      }
+      if (btnPreviewMob) {
+        btnPreviewMob.style.display = 'none';
+      }
     }
 
     async function salvarVideoGaleriaFotos() {
@@ -3212,12 +3237,32 @@ Prompt: Two round white pods shooting through outer space as a colossal crimson 
       }
 
       // 2. Parâmetros da timeline matemática e resolução
+      const isMobileDevice = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
       const resSelect = document.getElementById('videoResolutionSelect')?.value || '1080';
       const targetW = resSelect === '720' ? 1280 : 1920;
       const targetH = resSelect === '720' ? 720 : 1080;
       const scaleRatio = targetW / 1920;
-      // Taxa de bits oficial recomendada pelo YouTube (8 Mbps para 1080p, 4.5 Mbps para 720p)
-      const targetBitrate = targetW === 1920 ? 8000000 : 4500000;
+      // No celular usa bitrate otimizado para não estourar a RAM durante o muxer.finalize()
+      const targetBitrate = isMobileDevice
+        ? (targetW === 1920 ? 6000000 : 3000000)
+        : (targetW === 1920 ? 8000000 : 4500000);
+
+      function liberarRecursosTemporariosExportacao() {
+        for (const c of cardsParaVideo) {
+          if (c._cachedBitmap && typeof c._cachedBitmap.close === 'function') {
+            try { c._cachedBitmap.close(); } catch (e) {}
+          }
+          if (c._cachedTxtBitmap && typeof c._cachedTxtBitmap.close === 'function') {
+            try { c._cachedTxtBitmap.close(); } catch (e) {}
+          }
+          c._cachedBitmap = null;
+          c._cachedTxtBitmap = null;
+        }
+        if (isMobileDevice) {
+          bufferTrilhaCache = {};
+          dadosBaseAudio = null;
+        }
+      }
 
       const cardW = 620;
       const cardH = 1040;
@@ -3246,8 +3291,6 @@ Prompt: Two round white pods shooting through outer space as a colossal crimson 
           console.warn("Falha ao processar trilha de áudio:", err);
         }
       }
-
-      const isMobileDevice = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
       const totalFaixaW = (cardsParaVideo.length * cardW) + ((cardsParaVideo.length - 1) * gap) + (margin * 2);
       // Espaço vazio para tela final do YouTube: deixa os últimos quadros legíveis na esquerda e área vazia na direita
@@ -3615,6 +3658,14 @@ Prompt: Two round white pods shooting through outer space as a colossal crimson 
             if (audioEncoder) {
               try { audioEncoder.close(); } catch (e) {}
             }
+            // Libera bitmaps e áudio da RAM ANTES do pico de memória de muxer.finalize()
+            liberarRecursosTemporariosExportacao();
+            if (outCanvas && outCanvas.width > 1) {
+              outCanvas.width = 1;
+              outCanvas.height = 1;
+            }
+            await new Promise(r => setTimeout(r, 30));
+
             muxer.finalize();
 
             videoBlob = new Blob([muxer.target.buffer], { type: 'video/mp4' });
@@ -3750,17 +3801,8 @@ Prompt: Two round white pods shooting through outer space as a colossal crimson 
         videoBlob = await gravacaoPromise;
       }
 
-      // Libera imediatamente os ImageBitmaps temporários da GPU para não pesar no celular após exportar
-      for (const c of cardsParaVideo) {
-        if (c._cachedBitmap && typeof c._cachedBitmap.close === 'function') {
-          try { c._cachedBitmap.close(); } catch (e) {}
-        }
-        if (c._cachedTxtBitmap && typeof c._cachedTxtBitmap.close === 'function') {
-          try { c._cachedTxtBitmap.close(); } catch (e) {}
-        }
-        c._cachedBitmap = null;
-        c._cachedTxtBitmap = null;
-      }
+      // Libera recursos temporários caso ainda não tenham sido liberados
+      liberarRecursosTemporariosExportacao();
 
       if (wakeLock) {
         wakeLock.release().catch(() => {});
@@ -3781,14 +3823,30 @@ Prompt: Two round white pods shooting through outer space as a colossal crimson 
       }
       ultimoVideoGeradoUrl = URL.createObjectURL(videoBlob);
 
-      // Conecta o arquivo ao Player de Pré-visualização com suporte total a iOS/Android
+      // No celular: não pré-carrega o <video> na RAM nem dispara navigator.share automático (evita crash/reset da aba!)
       const previewVideoEl = document.getElementById('videoPreviewResult');
-      if (previewVideoEl) {
-        previewVideoEl.src = ultimoVideoGeradoUrl;
-        previewVideoEl.load();
+      const btnPreviewMob = document.getElementById('btnCarregarPreviewMobile');
+      if (isMobileDevice) {
+        if (previewVideoEl) {
+          previewVideoEl.pause();
+          previewVideoEl.removeAttribute('src');
+          previewVideoEl.style.display = 'none';
+        }
+        if (btnPreviewMob) {
+          btnPreviewMob.style.display = 'flex';
+        }
+      } else {
+        if (previewVideoEl) {
+          previewVideoEl.src = ultimoVideoGeradoUrl;
+          previewVideoEl.style.display = 'block';
+          previewVideoEl.load();
+        }
+        if (btnPreviewMob) {
+          btnPreviewMob.style.display = 'none';
+        }
       }
 
-      // Transiciona imediatamente para a Área de Sucesso com o Player e os Botões
+      // Transiciona imediatamente para a Área de Sucesso com os Botões prontos
       document.getElementById('modalProgressArea').style.display = 'none';
       const successArea = document.getElementById('modalSuccessArea');
       if (successArea) {
@@ -3796,25 +3854,6 @@ Prompt: Two round white pods shooting through outer space as a colossal crimson 
       }
 
       mostrarToast("🎉 Vídeo 100% pronto! Toque no botão verde para Salvar no Fotos.");
-
-      // Tentativa imediata e suave no mobile caso o navegador aprove a janela nativa
-      if (navigator.canShare && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
-        try {
-          const cleanMime = mimeType.includes('webm') ? 'video/webm' : 'video/mp4';
-          const videoFile = new File([videoBlob], `video_historia_${Date.now()}.${extensao}`, { type: cleanMime });
-          if (navigator.canShare({ files: [videoFile] })) {
-            await navigator.share({
-              title: "Vídeo Manga Stories",
-              text: "Salvar vídeo na Galeria de Fotos",
-              files: [videoFile]
-            });
-            mostrarToast("✓ Vídeo salvo! Escolha 'Salvar Vídeo' para ir ao Fotos.");
-          }
-        } catch (e) {
-          // Normal no iOS aguardar o toque direto no botão verde
-          console.log("Auto-share aguardando clique manual do usuário:", e);
-        }
-      }
     }
 
     /* ========================================================
