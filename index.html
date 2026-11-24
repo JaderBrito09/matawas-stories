@@ -1687,7 +1687,7 @@
 
   <!-- CANVAS OCULTO PARA EXPORTAÇÃO DE VÍDEO E IMAGENS -->
   <canvas id="exportCanvas" style="display:none;"></canvas>
-  <canvas id="videoRenderCanvas" width="1920" height="1080" style="display:none;"></canvas>
+  <canvas id="videoRenderCanvas" width="1" height="1" style="display:none;"></canvas>
 
   <script>
     /* ========================================================
@@ -4324,11 +4324,9 @@ ${kit.tags}
         if (gravacaoCancelada) break;
 
         // Backpressure no codificador de áudio para não estourar memória
-        let audioStuck = 0;
         while (audioEncoder.encodeQueueSize >= 8) {
-          if (gravacaoCancelada) break;
+          if (gravacaoCancelada || audioEncoder.state === 'closed') break;
           await new Promise(r => setTimeout(r, 4));
-          if (++audioStuck > 100) break;
         }
 
         const framesInChunk = Math.min(chunkSize, totalTargetFrames - frameOffset);
@@ -4407,7 +4405,7 @@ ${kit.tags}
       }
 
       // 2. Parâmetros da timeline matemática e resolução
-      const isMobileDevice = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+      const isMobileDevice = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
       const videoFormat = document.getElementById('videoFormatSelect')?.value || '16:9';
       const isShorts = videoFormat === '9:16';
 
@@ -4438,6 +4436,7 @@ ${kit.tags}
           }
           c._cachedBitmap = null;
           c._cachedTxtBitmap = null;
+          c._loadedImg = null;
         }
         if (isMobileDevice) {
           bufferTrilhaCache = {};
@@ -4788,26 +4787,25 @@ ${kit.tags}
 
             const frameDurationMicros = Math.round(1_000_000 / fps);
 
+            const maxQueue = isMobileDevice ? 1 : 2;
+
             for (let frame = 0; frame < totalFrames; frame++) {
-              if (gravacaoCancelada) {
-                encoder.close();
-                if (audioEncoder) audioEncoder.close();
+              if (gravacaoCancelada || encoder.state === 'closed') {
+                try { encoder.close(); } catch (e) { }
+                if (audioEncoder) { try { audioEncoder.close(); } catch (e) { } }
                 fecharModalExportarVideo();
                 return;
               }
 
-              // CONTROLE DE BACKPRESSURE ESTRITO (evita picos de VRAM no celular)
-              const maxQueue = isMobileDevice ? 2 : 3;
-              let encStuck = 0;
+              // CONTROLE DE BACKPRESSURE ESTRITO (Zero acúmulo de quadros na VRAM)
               while (encoder.encodeQueueSize >= maxQueue) {
-                if (gravacaoCancelada) break;
-                await new Promise(r => setTimeout(r, 6));
-                if (++encStuck > 100) break;
+                if (gravacaoCancelada || encoder.state === 'closed') break;
+                await new Promise(r => setTimeout(r, 8));
               }
 
-              if (gravacaoCancelada) {
-                encoder.close();
-                if (audioEncoder) audioEncoder.close();
+              if (gravacaoCancelada || encoder.state === 'closed') {
+                try { encoder.close(); } catch (e) { }
+                if (audioEncoder) { try { audioEncoder.close(); } catch (e) { } }
                 fecharModalExportarVideo();
                 return;
               }
@@ -4820,14 +4818,22 @@ ${kit.tags}
                 duration: frameDurationMicros
               });
 
-              // Keyframe regular a cada 1 segundo para busca ágil
-              const isKey = (frame % fps === 0) || (frame === 0);
-              encoder.encode(videoFrame, { keyFrame: isKey });
-              videoFrame.close();
+              try {
+                // Keyframe regular a cada 1 segundo para busca ágil
+                const isKey = (frame % fps === 0) || (frame === 0);
+                encoder.encode(videoFrame, { keyFrame: isKey });
+              } finally {
+                videoFrame.close();
+              }
 
-              // Cede a vez regularmente para manter o navegador responsivo e acionar Garbage Collector no mobile
-              const yieldInterval = isMobileDevice ? 2 : 3;
-              if (frame % yieldInterval === 0 || frame === totalFrames - 1) {
+              // No celular: aguarda 8ms em CADA frame para o garbage collector limpar VRAM e manter o app 100% frio e estável
+              if (isMobileDevice) {
+                await new Promise(r => setTimeout(r, 8));
+              } else if (frame % 3 === 0) {
+                await new Promise(r => setTimeout(r, 0));
+              }
+
+              if (frame % (isMobileDevice ? 4 : 3) === 0 || frame === totalFrames - 1) {
                 const pct = Math.round(15 + ((frame / totalFrames) * 75));
                 progressFill.style.width = `${pct}%`;
                 let faseNome = "Scroll Contínuo";
@@ -4840,7 +4846,6 @@ ${kit.tags}
                   }
                 }
                 statusText.innerText = `Renderizando [${faseNome}]: ${Math.round((frame / totalFrames) * 100)}% (${(frame / fps).toFixed(1)}s / ${duracaoTotal.toFixed(1)}s)`;
-                await new Promise(r => setTimeout(r, 0));
               }
             }
 
@@ -4971,7 +4976,7 @@ ${kit.tags}
           };
         });
 
-        recorder.start();
+        recorder.start(1000);
 
         const startTime = performance.now();
         while (true) {

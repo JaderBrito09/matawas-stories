@@ -266,13 +266,10 @@ self.onmessage = async function(e) {
         return;
       }
 
-      // Backpressure mínimo para não sobrecarregar memória da GPU (com trava anti-deadlock)
-      let encQueueStuck = 0;
-      while (encoder.encodeQueueSize >= 4) {
-        if (self.isCancelled) break;
+      // Backpressure estrito para não sobrecarregar memória da GPU
+      while (encoder.encodeQueueSize >= 3) {
+        if (self.isCancelled || encoder.state === 'closed') break;
         await new Promise(r => setTimeout(r, 6));
-        encQueueStuck++;
-        if (encQueueStuck > 100) break;
       }
 
       const tempoAtual = frame / fps;
@@ -283,9 +280,12 @@ self.onmessage = async function(e) {
         duration: frameDurationMicros
       });
 
-      const isKey = (frame % fps === 0) || (frame === 0);
-      encoder.encode(videoFrame, { keyFrame: isKey });
-      videoFrame.close();
+      try {
+        const isKey = (frame % fps === 0) || (frame === 0);
+        encoder.encode(videoFrame, { keyFrame: isKey });
+      } finally {
+        videoFrame.close();
+      }
 
       if (frame % 4 === 0 || frame === totalFrames - 1) {
         const pct = Math.round(15 + ((frame / totalFrames) * 75));
@@ -331,12 +331,9 @@ self.onmessage = async function(e) {
 
         while (frameOffset < totalTargetFrames) {
           if (self.isCancelled) break;
-          let audQueueStuck = 0;
           while (audioEncoder.encodeQueueSize >= 8) {
-            if (self.isCancelled) break;
+            if (self.isCancelled || audioEncoder.state === 'closed') break;
             await new Promise(r => setTimeout(r, 4));
-            audQueueStuck++;
-            if (audQueueStuck > 80) break;
           }
 
           const framesInChunk = Math.min(chunkSize, totalTargetFrames - frameOffset);
