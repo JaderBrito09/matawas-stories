@@ -4316,9 +4316,10 @@ ${kit.tags}
       const fadeStartSample = Math.max(0, Math.floor((duracaoTotalSegundos - 1.5) * sampleRate));
       const fadeSamplesCount = Math.max(1, totalTargetFrames - fadeStartSample);
 
-      const chunkSize = 1024;
+      const chunkSize = 2048;
       const planarData = new Float32Array(chunkSize * 2);
       let frameOffset = 0;
+      let chunkCount = 0;
 
       while (frameOffset < totalTargetFrames) {
         if (gravacaoCancelada) break;
@@ -4357,6 +4358,10 @@ ${kit.tags}
         audioData.close();
 
         frameOffset += framesInChunk;
+        chunkCount++;
+        if (chunkCount % 12 === 0) {
+          await new Promise(r => setTimeout(r, 0));
+        }
       }
 
       await Promise.race([
@@ -4762,7 +4767,7 @@ ${kit.tags}
                   sampleRate: audioSampleRate
                 }
               } : {}),
-              fastStart: 'in-memory'
+              fastStart: isMobileDevice ? false : 'in-memory'
             });
 
             const encoder = new VideoEncoder({
@@ -4879,10 +4884,16 @@ ${kit.tags}
               console.warn("Aviso ao finalizar muxer:", muxErr);
             }
 
-            videoBlob = new Blob([muxer.target.buffer], { type: 'video/mp4' });
+            const targetBuf = muxer.target.buffer;
+            videoBlob = new Blob([targetBuf], { type: 'video/mp4' });
             extensao = 'mp4';
             mimeType = 'video/mp4';
             usouWebCodecs = true;
+
+            // Libera imediatamente instâncias pesadas da memória
+            muxer = null;
+            encoder = null;
+            audioEncoder = null;
           }
         } catch (webCodecsErr) {
           console.warn("WebCodecs falhou, aplicando fallback:", webCodecsErr);
@@ -5032,10 +5043,10 @@ ${kit.tags}
       }
 
       // 4.5. OTIMIZAÇÃO AUTOMÁTICA VIA SERVIDOR (FFMPEG)
-      // Apenas acionado se o vídeo for WebM (fallback) ou se o áudio não pôde ser injetado no navegador
-      const precisaOtimizarFfmpeg = (extensao === 'webm') || (trackEscolhida !== 'none' && !usarAudioNoMuxer && !usouWorkerComSucesso);
+      // Apenas acionado no Desktop para WebM. No Celular NUNCA faz upload automático no final para não reiniciar a aba por memória
+      const precisaOtimizarFfmpeg = (extensao === 'webm') && window.location.protocol.startsWith('http') && !isMobileDevice;
 
-      if (window.location.protocol.startsWith('http') && precisaOtimizarFfmpeg) {
+      if (precisaOtimizarFfmpeg) {
         try {
           statusText.innerText = "🚀 Finalizando áudio e compatibilidade YouTube (FFmpeg)...";
           progressFill.style.width = "98%";
@@ -5095,6 +5106,9 @@ ${kit.tags}
           btnPreviewMob.style.display = 'none';
         }
       }
+
+      // Pausa para o motor do navegador liberar memória e atualizar a tela com segurança
+      await new Promise(r => setTimeout(r, 60));
 
       // Transiciona imediatamente para a Área de Sucesso com os Botões prontos
       document.getElementById('modalProgressArea').style.display = 'none';
