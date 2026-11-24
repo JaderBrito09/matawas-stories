@@ -4273,9 +4273,11 @@ ${kit.tags}
         if (gravacaoCancelada) break;
 
         // Backpressure no codificador de áudio para não estourar memória
+        let audioStuck = 0;
         while (audioEncoder.encodeQueueSize >= 8) {
           if (gravacaoCancelada) break;
           await new Promise(r => setTimeout(r, 4));
+          if (++audioStuck > 100) break;
         }
 
         const framesInChunk = Math.min(chunkSize, totalTargetFrames - frameOffset);
@@ -4308,7 +4310,10 @@ ${kit.tags}
         frameOffset += framesInChunk;
       }
 
-      await audioEncoder.flush();
+      await Promise.race([
+        audioEncoder.flush().catch(() => { }),
+        new Promise(r => setTimeout(r, 3000))
+      ]);
     }
 
     async function iniciarGravacaoVideo() {
@@ -4596,23 +4601,35 @@ ${kit.tags}
               }
 
               const workerPromise = new Promise((resolve, reject) => {
+                let finishTimeout = null;
                 worker.onmessage = (evt) => {
                   const m = evt.data;
                   if (!m) return;
                   if (m.type === 'progress') {
                     progressFill.style.width = `${m.pct}%`;
                     statusText.innerText = `Renderizando [Worker Acelerado]: ${Math.round((m.frame / m.totalFrames) * 100)}% (${m.tempoAtual.toFixed(1)}s / ${m.duracaoTotal.toFixed(1)}s)`;
+                    if (m.frame >= m.totalFrames - 1 && !finishTimeout) {
+                      finishTimeout = setTimeout(() => {
+                        reject(new Error('TIMEOUT_FINALIZACAO_WORKER'));
+                      }, 10000);
+                    }
                   } else if (m.type === 'status') {
                     statusText.innerText = m.text;
                   } else if (m.type === 'done') {
+                    if (finishTimeout) clearTimeout(finishTimeout);
                     resolve(new Blob([m.buffer], { type: 'video/mp4' }));
                   } else if (m.type === 'error') {
+                    if (finishTimeout) clearTimeout(finishTimeout);
                     reject(new Error(m.error));
                   } else if (m.type === 'cancelled') {
+                    if (finishTimeout) clearTimeout(finishTimeout);
                     reject(new Error('CANCELLED'));
                   }
                 };
-                worker.onerror = (err) => reject(err);
+                worker.onerror = (err) => {
+                  if (finishTimeout) clearTimeout(finishTimeout);
+                  reject(err);
+                };
               });
 
               worker.postMessage({
@@ -4730,9 +4747,11 @@ ${kit.tags}
 
               // CONTROLE DE BACKPRESSURE ESTRITO (evita picos de VRAM no celular)
               const maxQueue = isMobileDevice ? 2 : 3;
+              let encStuck = 0;
               while (encoder.encodeQueueSize >= maxQueue) {
                 if (gravacaoCancelada) break;
                 await new Promise(r => setTimeout(r, 6));
+                if (++encStuck > 100) break;
               }
 
               if (gravacaoCancelada) {
@@ -4782,8 +4801,11 @@ ${kit.tags}
             }
 
             statusText.innerText = "Finalizando empacotamento MP4 com áudio...";
-            await encoder.flush();
-            encoder.close();
+            await Promise.race([
+              encoder.flush().catch(() => { }),
+              new Promise(r => setTimeout(r, 4000))
+            ]);
+            try { encoder.close(); } catch (e) { }
             if (audioEncoder) {
               try { audioEncoder.close(); } catch (e) { }
             }
@@ -4795,7 +4817,11 @@ ${kit.tags}
             }
             await new Promise(r => setTimeout(r, 30));
 
-            muxer.finalize();
+            try {
+              muxer.finalize();
+            } catch (muxErr) {
+              console.warn("Aviso ao finalizar muxer:", muxErr);
+            }
 
             videoBlob = new Blob([muxer.target.buffer], { type: 'video/mp4' });
             extensao = 'mp4';
@@ -4885,7 +4911,11 @@ ${kit.tags}
         };
 
         const gravacaoPromise = new Promise((resolve) => {
+          let timeout = setTimeout(() => {
+            resolve(new Blob(chunks, { type: mimeType }));
+          }, 4000);
           recorder.onstop = () => {
+            clearTimeout(timeout);
             resolve(new Blob(chunks, { type: mimeType }));
           };
         });
@@ -4946,18 +4976,24 @@ ${kit.tags}
       }
 
       // 4.5. OTIMIZAÇÃO AUTOMÁTICA VIA SERVIDOR (FFMPEG)
-      // Garante áudio estéreo AAC perfeito, pixel format yuv420p e compatibilidade total com celular e YouTube
-      const precisaOtimizarFfmpeg = (extensao === 'webm') || (trackEscolhida !== 'none' && !usarAudioNoMuxer && !usouWorkerComSucesso) || isMobileDevice;
+      // Apenas acionado se o vídeo for WebM (fallback) ou se o áudio não pôde ser injetado no navegador
+      const precisaOtimizarFfmpeg = (extensao === 'webm') || (trackEscolhida !== 'none' && !usarAudioNoMuxer && !usouWorkerComSucesso);
 
       if (window.location.protocol.startsWith('http') && precisaOtimizarFfmpeg) {
         try {
-          statusText.innerText = "🚀 Finalizando áudio estéreo e compatibilidade YouTube (FFmpeg)...";
+          statusText.innerText = "🚀 Finalizando áudio e compatibilidade YouTube (FFmpeg)...";
           progressFill.style.width = "98%";
+
+          const abortCtrl = new AbortController();
+          const timerAbort = setTimeout(() => abortCtrl.abort(), 15000);
 
           const respProc = await fetch(`/api/processar-video?trilha=${encodeURIComponent(trackEscolhida)}`, {
             method: 'POST',
-            body: videoBlob
+            body: videoBlob,
+            signal: abortCtrl.signal
           });
+          clearTimeout(timerAbort);
+
           if (respProc.ok) {
             const mp4Blob = await respProc.blob();
             if (mp4Blob && mp4Blob.size > 1000) {
@@ -4967,7 +5003,7 @@ ${kit.tags}
             }
           }
         } catch (procErr) {
-          console.warn("Otimização automática FFmpeg ignorada, prosseguindo com vídeo direto:", procErr);
+          console.warn("Otimização automática FFmpeg ignorada/timeout, prosseguindo com vídeo direto:", procErr);
         }
       }
 

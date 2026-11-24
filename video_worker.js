@@ -266,10 +266,13 @@ self.onmessage = async function(e) {
         return;
       }
 
-      // Backpressure mínimo para não sobrecarregar memória da GPU
+      // Backpressure mínimo para não sobrecarregar memória da GPU (com trava anti-deadlock)
+      let encQueueStuck = 0;
       while (encoder.encodeQueueSize >= 4) {
         if (self.isCancelled) break;
         await new Promise(r => setTimeout(r, 6));
+        encQueueStuck++;
+        if (encQueueStuck > 100) break;
       }
 
       const tempoAtual = frame / fps;
@@ -311,59 +314,84 @@ self.onmessage = async function(e) {
 
     // Processamento do Áudio AAC em Streaming com Loop e Fade-Out (Zero consumo extra de RAM)
     if (usarAudioNoMuxer && audioEncoder && baseAudioCh0 && baseAudioCh0.length > 0) {
-      self.postMessage({ type: 'status', text: 'Sincronizando áudio AAC em streaming no Worker...' });
-      const sr = sampleRate || 44100;
-      const baseLength = baseAudioCh0.length;
-      const ch0 = baseAudioCh0;
-      const ch1 = (baseAudioCh1 && baseAudioCh1.length === baseLength) ? baseAudioCh1 : ch0;
+      try {
+        self.postMessage({ type: 'status', text: 'Sincronizando áudio AAC em streaming no Worker...' });
+        const sr = sampleRate || 44100;
+        const baseLength = baseAudioCh0.length;
+        const ch0 = baseAudioCh0;
+        const ch1 = (baseAudioCh1 && baseAudioCh1.length === baseLength) ? baseAudioCh1 : ch0;
 
-      const totalTargetFrames = Math.ceil(duracaoTotal * sr);
-      const fadeStartSample = Math.max(0, Math.floor((duracaoTotal - 1.5) * sr));
-      const fadeSamplesCount = Math.max(1, totalTargetFrames - fadeStartSample);
+        const totalTargetFrames = Math.ceil(duracaoTotal * sr);
+        const fadeStartSample = Math.max(0, Math.floor((duracaoTotal - 1.5) * sr));
+        const fadeSamplesCount = Math.max(1, totalTargetFrames - fadeStartSample);
 
-      const chunkSize = 1024;
-      const reusablePlanar = new Float32Array(chunkSize * 2);
-      let frameOffset = 0;
+        const chunkSize = 1024;
+        const reusablePlanar = new Float32Array(chunkSize * 2);
+        let frameOffset = 0;
 
-      while (frameOffset < totalTargetFrames) {
-        if (self.isCancelled) break;
-        while (audioEncoder.encodeQueueSize >= 8) {
+        while (frameOffset < totalTargetFrames) {
           if (self.isCancelled) break;
-          await new Promise(r => setTimeout(r, 4));
-        }
-
-        const framesInChunk = Math.min(chunkSize, totalTargetFrames - frameOffset);
-        const chunkPlanar = framesInChunk === chunkSize ? reusablePlanar : new Float32Array(framesInChunk * 2);
-
-        for (let s = 0; s < framesInChunk; s++) {
-          const globalSample = frameOffset + s;
-          const srcIdx = globalSample % baseLength;
-          let gain = 1.0;
-          if (globalSample >= fadeStartSample) {
-            gain = Math.max(0.001, 1.0 - ((globalSample - fadeStartSample) / fadeSamplesCount));
+          let audQueueStuck = 0;
+          while (audioEncoder.encodeQueueSize >= 8) {
+            if (self.isCancelled) break;
+            await new Promise(r => setTimeout(r, 4));
+            audQueueStuck++;
+            if (audQueueStuck > 80) break;
           }
-          chunkPlanar[s] = ch0[srcIdx] * gain;
-          chunkPlanar[framesInChunk + s] = ch1[srcIdx] * gain;
+
+          const framesInChunk = Math.min(chunkSize, totalTargetFrames - frameOffset);
+          const chunkPlanar = framesInChunk === chunkSize ? reusablePlanar : new Float32Array(framesInChunk * 2);
+
+          for (let s = 0; s < framesInChunk; s++) {
+            const globalSample = frameOffset + s;
+            const srcIdx = globalSample % baseLength;
+            let gain = 1.0;
+            if (globalSample >= fadeStartSample) {
+              gain = Math.max(0.001, 1.0 - ((globalSample - fadeStartSample) / fadeSamplesCount));
+            }
+            chunkPlanar[s] = ch0[srcIdx] * gain;
+            chunkPlanar[framesInChunk + s] = ch1[srcIdx] * gain;
+          }
+
+          const timestampMicros = Math.round((frameOffset / sr) * 1_000_000);
+          const audioData = new AudioData({
+            format: 'f32-planar',
+            sampleRate: sr,
+            numberOfFrames: framesInChunk,
+            numberOfChannels: 2,
+            timestamp: timestampMicros,
+            data: chunkPlanar
+          });
+          audioEncoder.encode(audioData);
+          audioData.close();
+          frameOffset += framesInChunk;
         }
 
-        const timestampMicros = Math.round((frameOffset / sr) * 1_000_000);
-        const audioData = new AudioData({
-          format: 'f32-planar',
-          sampleRate: sr,
-          numberOfFrames: framesInChunk,
-          numberOfChannels: 2,
-          timestamp: timestampMicros,
-          data: chunkPlanar
-        });
-        audioEncoder.encode(audioData);
-        audioData.close();
-        frameOffset += framesInChunk;
+        await Promise.race([
+          audioEncoder.flush(),
+          new Promise(r => setTimeout(r, 3000))
+        ]);
+        audioEncoder.close();
+      } catch (aErr) {
+        console.warn("Aviso: falha na trilha de áudio no Worker:", aErr);
       }
-      await audioEncoder.flush();
     }
 
-    await encoder.flush();
-    muxer.finalize();
+    try {
+      await Promise.race([
+        encoder.flush(),
+        new Promise(r => setTimeout(r, 4000))
+      ]);
+      encoder.close();
+    } catch (e) {
+      console.warn("Aviso no encoder.flush:", e);
+    }
+
+    try {
+      muxer.finalize();
+    } catch (muxErr) {
+      console.warn("Aviso no muxer.finalize:", muxErr);
+    }
 
     self.postMessage({
       type: 'done',

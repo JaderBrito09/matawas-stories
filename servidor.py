@@ -152,10 +152,32 @@ class MatawasRequestHandler(http.server.SimpleHTTPRequestHandler):
                 except Exception:
                     duracao = 15.0
 
+                codec_video = "desconhecido"
+                try:
+                    probe_codec_cmd = [
+                        "ffprobe", "-v", "error",
+                        "-select_streams", "v:0",
+                        "-show_entries", "stream=codec_name",
+                        "-of", "default=noprint_wrappers=1:nokey=1",
+                        temp_in.name
+                    ]
+                    codec_video = subprocess.check_output(probe_codec_cmd, stderr=subprocess.DEVNULL, timeout=4).decode().strip().lower()
+                except Exception:
+                    codec_video = "desconhecido"
+
                 trilha_path = os.path.join(PROJECT_DIR, trilha_escolhida)
                 tem_trilha = trilha_escolhida != "none" and os.path.exists(trilha_path)
 
                 fade_start = max(0.0, duracao - 1.5)
+
+                # Se o vídeo já foi gerado em H.264 (padrão do WebCodecs), usa -c:v copy para velocidade instantânea (0.3s)
+                copiar_video = (codec_video == "h264")
+                v_codec_args = ["-c:v", "copy"] if copiar_video else [
+                    "-c:v", "libx264",
+                    "-pix_fmt", "yuv420p",
+                    "-preset", "ultrafast",
+                    "-crf", "21"
+                ]
 
                 if tem_trilha:
                     cmd = [
@@ -163,13 +185,8 @@ class MatawasRequestHandler(http.server.SimpleHTTPRequestHandler):
                         "-i", temp_in.name,
                         "-stream_loop", "-1", "-i", trilha_path,
                         "-map", "0:v:0",
-                        "-map", "1:a:0",
-                        "-c:v", "libx264",
-                        "-pix_fmt", "yuv420p",
-                        "-profile:v", "high",
-                        "-level", "4.1",
-                        "-preset", "fast",
-                        "-crf", "19",
+                        "-map", "1:a:0"
+                    ] + v_codec_args + [
                         "-t", str(duracao),
                         "-filter:a", f"afade=t=out:st={fade_start:.2f}:d=1.5",
                         "-c:a", "aac",
@@ -181,13 +198,8 @@ class MatawasRequestHandler(http.server.SimpleHTTPRequestHandler):
                 else:
                     cmd = [
                         "ffmpeg", "-y",
-                        "-i", temp_in.name,
-                        "-c:v", "libx264",
-                        "-pix_fmt", "yuv420p",
-                        "-profile:v", "high",
-                        "-level", "4.1",
-                        "-preset", "fast",
-                        "-crf", "19",
+                        "-i", temp_in.name
+                    ] + v_codec_args + [
                         "-c:a", "aac",
                         "-b:a", "192k",
                         "-ar", "44100",
@@ -195,7 +207,7 @@ class MatawasRequestHandler(http.server.SimpleHTTPRequestHandler):
                         temp_out.name
                     ]
 
-                subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=30)
 
                 with open(temp_out.name, "rb") as f:
                     final_bytes = f.read()
