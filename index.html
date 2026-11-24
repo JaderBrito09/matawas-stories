@@ -12,6 +12,7 @@
     rel="stylesheet">
   <script src="mp4-muxer.min.js"></script>
   <script src="subscribe_asset.js"></script>
+  <script src="jszip.min.js"></script>
   <style>
     :root {
       --bg-main: #0c0e12;
@@ -786,6 +787,11 @@
         title="Cole seu roteiro com cenas e deixe o Gemini criar todos os cards e imagens automaticamente!">
         🧠 O Gemini Resolve
       </button>
+      <button class="btn-primary" onclick="abrirModalKitYouTube()"
+        style="padding: 8px 14px; font-size: 13px; font-weight: 800; background: linear-gradient(135deg, #ef4444, #f97316); border:none; box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4); display:flex; align-items:center; gap:6px;"
+        title="Gera títulos virais, capítulos com minutagem, descrição completa e tags para o YouTube!">
+        <span>📋</span> Kit YouTube
+      </button>
       <button class="btn-thumb-goku" onclick="abrirModalThumbnailGokuShow()"
         title="Crie uma thumbnail profissional de 3 quadros igual às do canal Goku Show!">
         🔥 Thumbnail Goku Show
@@ -929,6 +935,15 @@
         </div>
 
         <div class="video-config-row">
+          <label>Formato do Vídeo:</label>
+          <select id="videoFormatSelect" onchange="alternarFormatoVideoExport(this.value); atualizarTempoEstimado();"
+            style="background:#111317; border:1px solid #333a47; color:#38bdf8; padding:6px 12px; border-radius:6px; font-weight:700; font-family:inherit;">
+            <option value="16:9" selected>🖥️ 16:9 Horizontal (YouTube Padrão 1920x1080)</option>
+            <option value="9:16">📱 9:16 Vertical (YouTube Shorts / TikTok 1080x1920)</option>
+          </select>
+        </div>
+
+        <div class="video-config-row" id="rowIntroTransition">
           <label>Transição Oficial dos 3 Cards (Estilo GokuShow):</label>
           <input type="checkbox" id="enableIntroTransition" checked
             style="width:22px; height:22px; accent-color:#ff4757; cursor:pointer;">
@@ -944,7 +959,7 @@
           </select>
         </div>
 
-        <div class="video-config-row">
+        <div class="video-config-row" id="rowSubscribeCard">
           <label>Card "Subscribe" no Meio (Alternative Dragon Balls):</label>
           <div style="display:flex; align-items:center; gap:8px;">
             <input type="checkbox" id="enableSubscribeCardOption" checked
@@ -954,7 +969,7 @@
           </div>
         </div>
 
-        <div class="video-config-row">
+        <div class="video-config-row" id="rowEndScreenDuration">
           <label>Espaço Vazio Final (Tela Final do YouTube):</label>
           <select id="videoEndScreenDuration" onchange="atualizarTempoEstimado()"
             style="background:#111317; border:1px solid #333a47; color:#38bdf8; padding:6px 12px; border-radius:6px; font-weight:700; font-family:inherit;">
@@ -965,7 +980,7 @@
           </select>
         </div>
 
-        <div class="video-config-row">
+        <div class="video-config-row" id="rowVideoResolution">
           <label>Resolução do Vídeo:</label>
           <select id="videoResolutionSelect"
             style="background:#111317; border:1px solid #333a47; color:#2ed573; padding:6px 12px; border-radius:6px; font-weight:700; font-family:inherit;">
@@ -1044,11 +1059,25 @@
           <span>SALVAR DIRETO NO FOTOS / GALERIA</span>
         </button>
 
-        <!-- Botão Secundário: Baixar Arquivo MP4 -->
+        <!-- Botão Pacote Completo .ZIP (Vídeo + Thumbnail + Kit YouTube) -->
+        <button id="btnBaixarPacoteZip" type="button" onclick="baixarPacoteCompletoZip()"
+          style="width:100%; padding:14px; font-size:14.5px; font-weight:800; background:linear-gradient(135deg, #7c3aed, #a855f7); color:#ffffff; border:none; border-radius:10px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px; box-shadow:0 4px 16px rgba(124, 58, 237, 0.4); margin-bottom:10px;">
+          <span style="font-size:18px;">📦</span>
+          <span>BAIXAR PACOTE COMPLETO (.ZIP: VÍDEO + THUMBNAIL + TEXTOS)</span>
+        </button>
+
+        <!-- Botão Abrir Kit YouTube -->
+        <button id="btnAbrirKitModal" type="button" onclick="abrirModalKitYouTube()"
+          style="width:100%; padding:12px 14px; font-size:13.5px; font-weight:800; background:linear-gradient(135deg, #ef4444, #f97316); color:#ffffff; border:none; border-radius:8px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px; box-shadow:0 4px 14px rgba(239, 68, 68, 0.35); margin-bottom:10px;">
+          <span style="font-size:16px;">📋</span>
+          <span>COPIAR KIT DE POSTAGEM YOUTUBE (TÍTULOS, DESCRIÇÃO E CAPÍTULOS)</span>
+        </button>
+
+        <!-- Botão Secundário: Baixar Arquivo MP4 Avulso -->
         <button id="btnBaixarArquivo" type="button" onclick="baixarArquivoVideoDireto()"
-          style="width:100%; padding:11px 16px; font-size:13.5px; font-weight:700; background:#1c1f26; color:#38bdf8; border:1px solid #333a47; border-radius:8px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px; margin-bottom:8px;">
+          style="width:100%; padding:11px 16px; font-size:13px; font-weight:700; background:#1c1f26; color:#94a3b8; border:1px solid #333a47; border-radius:8px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px; margin-bottom:8px;">
           <span style="font-size:16px;">💾</span>
-          <span>Baixar Arquivo MP4 (Downloads / Arquivos)</span>
+          <span>Baixar Apenas o Vídeo MP4</span>
         </button>
 
         <!-- Botão Extra: Otimizar para YouTube / Celular via FFmpeg -->
@@ -3386,20 +3415,518 @@ Prompt: Two round white pods shooting through outer space as a colossal crimson 
       link.click();
     }
 
+
+    /* ========================================================
+       SUPER FEATURES: KIT YOUTUBE, PACOTE .ZIP E MODO SHORTS 9:16
+       ======================================================== */
+    function alternarFormatoVideoExport(formato) {
+      const isShorts = formato === '9:16';
+      const rowIntro = document.getElementById('rowIntroTransition');
+      const rowEndScreen = document.getElementById('rowEndScreenDuration');
+      const rowSubscribe = document.getElementById('rowSubscribeCard');
+      const rowRes = document.getElementById('rowVideoResolution');
+
+      if (rowIntro) rowIntro.style.display = isShorts ? 'none' : 'flex';
+      if (rowEndScreen) rowEndScreen.style.display = isShorts ? 'none' : 'flex';
+      if (rowSubscribe) rowSubscribe.style.display = isShorts ? 'none' : 'flex';
+      if (rowRes) rowRes.style.display = isShorts ? 'none' : 'flex';
+
+      atualizarTempoEstimado();
+    }
+
+    function gerarKitPostagemYouTube() {
+      const tituloHist = obterTituloHistoria();
+      const durPorCard = parseFloat(document.getElementById('videoCardDuration')?.value || 5);
+      const videoFormat = document.getElementById('videoFormatSelect')?.value || '16:9';
+      const isShorts = videoFormat === '9:16';
+      const enableIntro = !isShorts && (document.getElementById('enableIntroTransition')?.checked !== false);
+      const introDur = (!isShorts && enableIntro) ? 8.2 : 0;
+
+      // Filtra apenas cenas reais da história
+      const cenasReais = [];
+      cards.forEach((c, idx) => {
+        if (!isCardSubscribeOuMeta(c)) {
+          cenasReais.push({ idx, card: c });
+        }
+      });
+
+      // Extrai entidades / personagens da história
+      const entidades = [];
+      cenasReais.forEach(item => {
+        const txt = `${item.card.title || ''} ${item.card.text || ''}`;
+        const matches = txt.match(/\b[A-ZÀ-Ú][a-zà-ú]{2,}\b/g) || [];
+        for (const m of matches) {
+          if (!/^(Cena|Scene|Card|Legenda|Prompt|Quando|Depois|Antes|Todos)$/i.test(m) && !entidades.includes(m)) {
+            entidades.push(m);
+          }
+        }
+      });
+
+      const p1 = entidades[0] || 'Bardock';
+      const p2 = entidades.find(e => e !== p1) || 'Raditz';
+
+      let tituloPrincipal = tituloHist || `O Destino de ${p1}`;
+      let titulos = [];
+      if (isShorts) {
+        titulos = [
+          `😱 ELE REALMENTE FEZ ISSO?! ${p1} vs O Destino! #Shorts`,
+          `O SEGREDO DE ${p1.toUpperCase()}! A Verdade Revelada 🔥 #Shorts`,
+          `E SE ${p1.toUpperCase()} TIVESSE SOBREVIVIDO?! 🤯 #Shorts`
+        ];
+      } else {
+        titulos = [
+          `E Se ${p1} Tivesse Descoberto a Verdade? O Destino de ${p2}! (História Completa)`,
+          `O SEGREDO DE ${p1.toUpperCase()}! A Escolha Que Mudou o Destino do Universo`,
+          `${tituloPrincipal.toUpperCase()}! A Lenda Saiyajin Nunca Revelada (Manga Stories)`
+        ];
+      }
+
+      // 2. TIMESTAMPS / CAPÍTULOS
+      let timestamps = [];
+      let tempoAcumulado = 0;
+
+      if (introDur > 0) {
+        timestamps.push(`00:00 - Introdução / O Ponto de Virada`);
+        tempoAcumulado = introDur;
+      } else {
+        timestamps.push(`00:00 - Início da História`);
+      }
+
+      cenasReais.forEach((item, pos) => {
+        if (pos > 0 || introDur > 0) {
+          const min = Math.floor(tempoAcumulado / 60);
+          const seg = Math.floor(tempoAcumulado % 60);
+          const mmss = `${String(min).padStart(2, '0')}:${String(seg).padStart(2, '0')}`;
+          let descCena = (item.card.text || '').replace(/[^\w\sà-úÀ-Ú]/g, '').trim().split(/\s+/).slice(0, 5).join(' ');
+          if (!descCena) descCena = `Cena ${pos + 1}`;
+          timestamps.push(`${mmss} - ${item.card.title || `Cena ${pos + 1}`}: ${descCena}`);
+        }
+        tempoAcumulado += durPorCard;
+      });
+
+      if (!isShorts) {
+        const endScreenDur = parseFloat(document.getElementById('videoEndScreenDuration')?.value || 8);
+        if (endScreenDur > 0) {
+          const minF = Math.floor(tempoAcumulado / 60);
+          const segF = Math.floor(tempoAcumulado % 60);
+          const mmssF = `${String(minF).padStart(2, '0')}:${String(segF).padStart(2, '0')}`;
+          timestamps.push(`${mmssF} - Conclusão e Tela Final`);
+        }
+      }
+
+      const textoTimestamps = timestamps.join('\n');
+
+      // 3. DESCRIÇÃO COMPLETA COM SEO
+      let sinopse = cenasReais.slice(0, 3).map(c => (c.card.text || '').trim()).filter(Boolean).join(' ');
+      if (sinopse.length > 250) sinopse = sinopse.slice(0, 250).trim() + '...';
+
+      const trackEscolhida = document.getElementById('videoAudioTrackSelect')?.value || trilhaSonoraSelecionada || 'trilha_nova.mp3';
+      const trackNome = trackEscolhida === 'trilha_nova.mp3' ? 'Angel Goku Theme (Alternative Dragon Balls)' : 'Dragon Ball Classic Emotional Theme';
+
+      const hashtags = isShorts
+        ? '#Shorts #DragonBall #GokuShow #Anime #DragonBallSuper #WhatIf'
+        : '#DragonBall #GokuShow #AlternativeDragonBalls #WhatIfDragonBall #AnimeStories #MangaStories #DragonBallSuper';
+
+      const textoDescricao = `${tituloPrincipal.toUpperCase()}
+Uma história alternativa épica inspirada no universo de Dragon Ball e no canal Goku Show!
+
+📖 SINOPSE:
+${sinopse || 'Descubra os acontecimentos que mudaram para sempre o destino dos guerreiros mais poderosos do universo.'}
+
+⏱️ CAPÍTULOS DO VÍDEO:
+${textoTimestamps}
+
+🔔 INSCREVA-SE NO CANAL E ATIVE O SININHO!
+Deixe seu Like 👍 e comente o que você achou desta história e qual deve ser o próximo episódio!
+
+🎵 Trilha Sonora: ${trackNome}
+🎨 Estilo Visual: Dragon Ball Manga Stories / Estilo Goku Show HD
+
+${hashtags}`;
+
+      // 4. TAGS
+      const baseTags = [
+        'goku show',
+        'alternative dragon balls',
+        'dragon ball what if',
+        'e se dragon ball',
+        'manga stories',
+        'historia dragon ball',
+        'dragon ball super',
+        'anime edit',
+        'bardock',
+        'raditz',
+        'vegeta',
+        'dragon ball z'
+      ];
+      if (tituloPrincipal) {
+        baseTags.unshift(tituloPrincipal.toLowerCase());
+      }
+      entidades.forEach(e => {
+        if (!baseTags.includes(e.toLowerCase())) baseTags.push(e.toLowerCase());
+      });
+      if (isShorts) baseTags.unshift('shorts', 'youtube shorts', 'anime shorts');
+      const textoTags = baseTags.slice(0, 18).join(', ');
+
+      return {
+        titulos,
+        timestamps: textoTimestamps,
+        descricao: textoDescricao,
+        tags: textoTags,
+        tituloPrincipal
+      };
+    }
+
+    function abrirModalKitYouTube() {
+      const modal = document.getElementById('kitYouTubeModal');
+      if (!modal) return;
+
+      const kit = gerarKitPostagemYouTube();
+
+      // Renderiza as 3 opções de título
+      const titulosList = document.getElementById('kitTitulosList');
+      if (titulosList) {
+        titulosList.innerHTML = kit.titulos.map((t, idx) => `
+          <div style="display:flex; justify-content:space-between; align-items:center; background:#0c0e12; border:1px solid #232936; border-radius:6px; padding:8px 12px; gap:8px;">
+            <div style="font-size:12.5px; color:#fff; font-weight:700; word-break:break-word;">
+              <span style="color:#fbbf24; font-size:11px; margin-right:4px;">Opção ${idx + 1}:</span> ${t}
+            </div>
+            <button type="button" onclick="copiarTexto('${t.replace(/'/g, "\\'")}', 'Título copiado!')" style="background:#1e293b; border:1px solid #334155; color:#fbbf24; font-size:11px; font-weight:700; padding:4px 8px; border-radius:4px; cursor:pointer; white-space:nowrap;">
+              📋 Copiar
+            </button>
+          </div>
+        `).join('');
+      }
+
+      // Preenche timestamps, descrição e tags
+      const elTimestamps = document.getElementById('kitTimestampsText');
+      if (elTimestamps) elTimestamps.value = kit.timestamps;
+
+      const elDesc = document.getElementById('kitDescricaoText');
+      if (elDesc) elDesc.value = kit.descricao;
+
+      const elTags = document.getElementById('kitTagsText');
+      if (elTags) elTags.value = kit.tags;
+
+      modal.style.display = 'flex';
+    }
+
+    function fecharModalKitYouTube() {
+      const modal = document.getElementById('kitYouTubeModal');
+      if (modal) modal.style.display = 'none';
+    }
+
+    function copiarTexto(texto, mensagemFeedback = "Copiado!") {
+      if (!texto) return;
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(texto).then(() => {
+          mostrarToast(`✓ ${mensagemFeedback}`);
+        }).catch(() => {
+          mostrarToast("Erro ao copiar para área de transferência.", true);
+        });
+      } else {
+        const ta = document.createElement('textarea');
+        ta.value = texto;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        mostrarToast(`✓ ${mensagemFeedback}`);
+      }
+    }
+
+    function copiarTextoElemento(elemId, mensagemFeedback = "Copiado!") {
+      const el = document.getElementById(elemId);
+      if (el) copiarTexto(el.value, mensagemFeedback);
+    }
+
+    function copiarTudoKitYouTube() {
+      const kit = gerarKitPostagemYouTube();
+      const tudo = `=====================================================
+KIT DE PUBLICAÇÃO YOUTUBE - ${kit.tituloPrincipal.toUpperCase()}
+=====================================================
+
+🎯 TÍTULOS RECOMENDADOS (TESTE A/B):
+Opção 1: ${kit.titulos[0]}
+Opção 2: ${kit.titulos[1]}
+Opção 3: ${kit.titulos[2]}
+
+-----------------------------------------------------
+⏱️ CAPÍTULOS / TIMESTAMPS:
+-----------------------------------------------------
+${kit.timestamps}
+
+-----------------------------------------------------
+📝 DESCRIÇÃO COMPLETA COM SEO:
+-----------------------------------------------------
+${kit.descricao}
+
+-----------------------------------------------------
+🏷️ TAGS (YOUTUBE STUDIO):
+-----------------------------------------------------
+${kit.tags}
+`;
+      copiarTexto(tudo, "Kit Completo copiado para a área de transferência!");
+    }
+
+    function baixarArquivoTxtKitYouTube() {
+      const kit = gerarKitPostagemYouTube();
+      const titulo = obterTituloHistoria();
+      const nomeBase = sanitizarNomeArquivo(titulo, `kit_youtube_${Date.now()}`);
+      const texto = `=====================================================
+KIT DE PUBLICAÇÃO YOUTUBE - ${kit.tituloPrincipal.toUpperCase()}
+=====================================================
+
+🎯 TÍTULOS RECOMENDADOS (TESTE A/B):
+Opção 1: ${kit.titulos[0]}
+Opção 2: ${kit.titulos[1]}
+Opção 3: ${kit.titulos[2]}
+
+-----------------------------------------------------
+⏱️ CAPÍTULOS / TIMESTAMPS:
+-----------------------------------------------------
+${kit.timestamps}
+
+-----------------------------------------------------
+📝 DESCRIÇÃO COMPLETA COM SEO:
+-----------------------------------------------------
+${kit.descricao}
+
+-----------------------------------------------------
+🏷️ TAGS (YOUTUBE STUDIO):
+-----------------------------------------------------
+${kit.tags}
+`;
+      const blob = new Blob([texto], { type: 'text/plain;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${nomeBase}_kit_postagem.txt`;
+      document.body.appendChild(link);
+      link.click();
+      setTimeout(() => {
+        try { document.body.removeChild(link); } catch(e){}
+        try { URL.revokeObjectURL(url); } catch(e){}
+      }, 1000);
+      mostrarToast(`📄 Arquivo ${nomeBase}_kit_postagem.txt salvo!`);
+    }
+
+    async function baixarPacoteCompletoZip() {
+      if (!ultimoVideoGeradoBlob) {
+        mostrarToast("Renderize o vídeo primeiro antes de baixar o pacote completo.", true);
+        return;
+      }
+      if (typeof JSZip === 'undefined') {
+        mostrarToast("Carregando biblioteca ZIP...", false);
+        await new Promise(resolve => {
+          const s = document.createElement('script');
+          s.src = 'jszip.min.js';
+          s.onload = resolve;
+          s.onerror = resolve;
+          document.head.appendChild(s);
+        });
+      }
+      if (typeof JSZip === 'undefined') {
+        mostrarToast("Compactador indisponível, baixando arquivos individuais.", true);
+        baixarArquivoVideoDireto();
+        baixarThumbnailGokuShow('jpg');
+        baixarArquivoTxtKitYouTube();
+        return;
+      }
+
+      const btn = document.getElementById('btnBaixarPacoteZip');
+      const txtAntigo = btn ? btn.innerHTML : '';
+      if (btn) btn.innerHTML = '<span>⏳</span><span>Compactando Pacote Completo (.ZIP)...</span>';
+      mostrarToast("📦 Compactando vídeo, thumbnail e textos em um único .ZIP...");
+
+      try {
+        const zip = new JSZip();
+        const titulo = obterTituloHistoria();
+        const nomeBase = sanitizarNomeArquivo(titulo, `manga_stories_${Date.now()}`);
+
+        // 1. Adiciona o vídeo (.mp4 ou .webm)
+        const ext = ultimoVideoGeradoExtensao || 'mp4';
+        zip.file(`${nomeBase}.${ext}`, ultimoVideoGeradoBlob);
+
+        // 2. Adiciona a Thumbnail HD (.jpg) do Goku Show
+        const canvas = document.getElementById('canvasGokuThumb');
+        if (canvas) {
+          const thumbBlob = await new Promise(res => canvas.toBlob(res, 'image/jpeg', 0.96));
+          if (thumbBlob) {
+            zip.file(`${nomeBase}_thumbnail.jpg`, thumbBlob);
+          }
+        }
+
+        // 3. Adiciona o Kit de Publicação do YouTube (.txt)
+        const kit = gerarKitPostagemYouTube();
+        const textoKitCompleto = `=====================================================
+KIT DE PUBLICAÇÃO YOUTUBE - ${nomeBase.toUpperCase()}
+=====================================================
+
+🎯 TÍTULOS RECOMENDADOS (TESTE A/B):
+Opção 1: ${kit.titulos[0]}
+Opção 2: ${kit.titulos[1]}
+Opção 3: ${kit.titulos[2]}
+
+-----------------------------------------------------
+⏱️ CAPÍTULOS / TIMESTAMPS:
+-----------------------------------------------------
+${kit.timestamps}
+
+-----------------------------------------------------
+📝 DESCRIÇÃO COMPLETA COM SEO:
+-----------------------------------------------------
+${kit.descricao}
+
+-----------------------------------------------------
+🏷️ TAGS (YOUTUBE STUDIO):
+-----------------------------------------------------
+${kit.tags}
+`;
+        zip.file(`${nomeBase}_kit_postagem_youtube.txt`, textoKitCompleto);
+
+        // 4. Gera e dispara download do .zip
+        const zipBlob = await zip.generateAsync({
+          type: 'blob',
+          compression: 'DEFLATE',
+          compressionOptions: { level: 4 }
+        });
+
+        const zipUrl = URL.createObjectURL(zipBlob);
+        const link = document.createElement('a');
+        link.href = zipUrl;
+        link.download = `${nomeBase}_PACOTE_YOUTUBE.zip`;
+        document.body.appendChild(link);
+        link.click();
+        setTimeout(() => {
+          try { document.body.removeChild(link); } catch(e){}
+          try { URL.revokeObjectURL(zipUrl); } catch(e){}
+        }, 1500);
+
+        mostrarToast(`🎉 Pacote completo baixado com sucesso! (${nomeBase}_PACOTE_YOUTUBE.zip)`);
+      } catch (err) {
+        console.error("Erro ao gerar zip:", err);
+        mostrarToast("Erro ao compactar pacote ZIP. Baixando arquivos avulsos.", true);
+        baixarArquivoVideoDireto();
+        baixarThumbnailGokuShow('jpg');
+      } finally {
+        if (btn) btn.innerHTML = txtAntigo;
+      }
+    }
+
+    // Desenho Vertical 9:16 para YouTube Shorts
+    function desenharQuadroShortsVertical(ctx, cards, tempo, durPorCard, duracaoTotal) {
+      ctx.fillStyle = '#08090c';
+      ctx.fillRect(0, 0, 1080, 1920);
+
+      const numCards = cards.length;
+      if (numCards === 0) return;
+
+      const cDur = durPorCard || 5;
+      const cardIdx = Math.min(numCards - 1, Math.floor(tempo / cDur));
+      const tempoNoCard = tempo - (cardIdx * cDur);
+      const cAtual = cards[cardIdx];
+      const cProx = cardIdx < numCards - 1 ? cards[cardIdx + 1] : null;
+
+      const cW = 840;
+      const cH = 1408;
+      const cX = 120;
+      const cY = 256;
+
+      const tempoTransicao = 0.35;
+      const emTransicao = tempoNoCard >= (cDur - tempoTransicao) && cProx;
+      const tProgress = emTransicao ? (tempoNoCard - (cDur - tempoTransicao)) / tempoTransicao : 0;
+      const ease = tProgress * tProgress * (3 - 2 * tProgress);
+
+      // 1. Fundo com a imagem do card
+      if (cAtual._loadedImg) {
+        ctx.save();
+        ctx.globalAlpha = 0.22;
+        ctx.drawImage(cAtual._loadedImg, -40, -40, 1160, 2000);
+        ctx.restore();
+      } else if (cAtual._cachedBitmap) {
+        ctx.save();
+        ctx.globalAlpha = 0.22;
+        ctx.drawImage(cAtual._cachedBitmap, -40, -40, 1160, 2000);
+        ctx.restore();
+      }
+
+      // Vinheta
+      const gradV = ctx.createLinearGradient(0, 0, 0, 1920);
+      gradV.addColorStop(0, 'rgba(0,0,0,0.85)');
+      gradV.addColorStop(0.2, 'rgba(0,0,0,0.4)');
+      gradV.addColorStop(0.8, 'rgba(0,0,0,0.4)');
+      gradV.addColorStop(1, 'rgba(0,0,0,0.92)');
+      ctx.fillStyle = gradV;
+      ctx.fillRect(0, 0, 1080, 1920);
+
+      // 2. Desenho dos cards
+      if (emTransicao && cProx) {
+        const shiftX = ease * (cW + 80);
+        ctx.save();
+        ctx.globalAlpha = 1 - (ease * 0.4);
+        if (cAtual._cachedBitmap) ctx.drawImage(cAtual._cachedBitmap, cX - shiftX, cY, cW, cH);
+        else desenharCardNoCanvas(ctx, cAtual, cX - shiftX, cY, cW, cH);
+        ctx.restore();
+
+        ctx.save();
+        ctx.globalAlpha = 0.6 + (ease * 0.4);
+        if (cProx._cachedBitmap) ctx.drawImage(cProx._cachedBitmap, cX + (cW + 80) - shiftX, cY, cW, cH);
+        else desenharCardNoCanvas(ctx, cProx, cX + (cW + 80) - shiftX, cY, cW, cH);
+        ctx.restore();
+      } else {
+        if (cAtual._cachedBitmap) ctx.drawImage(cAtual._cachedBitmap, cX, cY, cW, cH);
+        else desenharCardNoCanvas(ctx, cAtual, cX, cY, cW, cH);
+      }
+
+      // 3. Indicador e barra de progresso no topo
+      ctx.save();
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 28px Plus Jakarta Sans, sans-serif';
+      ctx.textAlign = 'center';
+      const tituloHist = obterTituloHistoria();
+      if (tituloHist) {
+        const titCortado = tituloHist.length > 32 ? tituloHist.slice(0, 32) + '...' : tituloHist;
+        ctx.fillText(titCortado.toUpperCase(), 540, 115);
+      }
+      ctx.font = '600 20px Plus Jakarta Sans, sans-serif';
+      ctx.fillStyle = '#94a3b8';
+      ctx.fillText(`CENA ${cardIdx + 1} DE ${numCards}`, 540, 155);
+
+      const totalT = duracaoTotal || (numCards * cDur);
+      const pctGeral = Math.min(1, Math.max(0, tempo / totalT));
+      ctx.fillStyle = 'rgba(255,255,255,0.2)';
+      ctx.fillRect(60, 185, 960, 6);
+      ctx.fillStyle = '#ff4757';
+      ctx.fillRect(60, 185, 960 * pctGeral, 6);
+      ctx.restore();
+    }
     /* ========================================================
        GERADOR DE VÍDEO COMPLETO PARA O YOUTUBE (1920x1080)
        COM TAXA DE QUADROS DETERMINÍSTICA E SEM GARGALO DE MEMÓRIA
        ======================================================== */
     function atualizarTempoEstimado() {
       const durPorCard = parseFloat(document.getElementById('videoCardDuration')?.value || 5);
-      const enableIntro = document.getElementById('enableIntroTransition')?.checked !== false;
-      const enableSubscribe = document.getElementById('enableSubscribeCardOption')?.checked !== false;
-      const endScreenDur = parseFloat(document.getElementById('videoEndScreenDuration')?.value || 8);
+      const videoFormat = document.getElementById('videoFormatSelect')?.value || '16:9';
+      const isShorts = videoFormat === '9:16';
+      const enableIntro = !isShorts && (document.getElementById('enableIntroTransition')?.checked !== false);
+      const enableSubscribe = !isShorts && (document.getElementById('enableSubscribeCardOption')?.checked !== false);
+      const endScreenDur = isShorts ? 0 : parseFloat(document.getElementById('videoEndScreenDuration')?.value || 8);
 
       let totalCards = cards.length;
       const jaTemSub = cards.some(c => c._isSubscribeCard || (c.text && c.text.trim().toLowerCase() === 'subscribe'));
       if (enableSubscribe && !jaTemSub && totalCards >= 2) {
         totalCards += 1;
+      }
+
+      if (isShorts) {
+        const totalSegundos = Math.round(totalCards * durPorCard);
+        const el = document.getElementById('estimatedDuration');
+        if (el) {
+          const avisoShorts = totalSegundos <= 60 ? '⚡ Ideal para Shorts (< 60s)' : '⚠️ Acima de 60s (YouTube Shorts exige até 60s)';
+          el.innerHTML = `<span style="color:#38bdf8; font-weight:800;">${totalSegundos}s</span> <span style="font-size:11.5px; color:#a7f3d0;">(${totalCards} cards x ${durPorCard}s • ${avisoShorts})</span>`;
+        }
+        return;
       }
 
       const introDur = enableIntro ? 8.2 : 0;
@@ -3512,7 +4039,10 @@ Prompt: Two round white pods shooting through outer space as a colossal crimson 
       }
 
       const tituloAtual = obterTituloHistoria();
-      const nomeBase = tituloAtual ? sanitizarNomeArquivo(tituloAtual) : `video_historia_${Date.now()}`;
+      const videoFormat = document.getElementById('videoFormatSelect')?.value || '16:9';
+      const isShorts = videoFormat === '9:16';
+      const sufixo = isShorts ? '_Shorts' : '';
+      const nomeBase = tituloAtual ? `${sanitizarNomeArquivo(tituloAtual)}${sufixo}` : `video_historia${sufixo}_${Date.now()}`;
       const fileName = `${nomeBase}.${ext}`;
       const videoFile = new File([ultimoVideoGeradoBlob], fileName, { type: cleanMime });
 
@@ -3568,7 +4098,10 @@ Prompt: Two round white pods shooting through outer space as a colossal crimson 
       }
 
       const tituloAtual = obterTituloHistoria();
-      const nomeBase = tituloAtual ? sanitizarNomeArquivo(tituloAtual) : `video_historia_youtube_${Date.now()}`;
+      const videoFormat = document.getElementById('videoFormatSelect')?.value || '16:9';
+      const isShorts = videoFormat === '9:16';
+      const sufixo = isShorts ? '_Shorts' : '';
+      const nomeBase = tituloAtual ? `${sanitizarNomeArquivo(tituloAtual)}${sufixo}` : `video_historia${sufixo}_youtube_${Date.now()}`;
       const videoUrl = URL.createObjectURL(ultimoVideoGeradoBlob);
       const downloadLink = document.createElement('a');
       downloadLink.href = videoUrl;
@@ -3819,14 +4352,25 @@ Prompt: Two round white pods shooting through outer space as a colossal crimson 
 
       // 2. Parâmetros da timeline matemática e resolução
       const isMobileDevice = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-      const resSelect = document.getElementById('videoResolutionSelect')?.value || '1080';
-      const targetW = resSelect === '720' ? 1280 : 1920;
-      const targetH = resSelect === '720' ? 720 : 1080;
-      const scaleRatio = targetW / 1920;
-      // No celular usa bitrate otimizado para não estourar a RAM durante o muxer.finalize()
+      const videoFormat = document.getElementById('videoFormatSelect')?.value || '16:9';
+      const isShorts = videoFormat === '9:16';
+
+      let targetW = 1920;
+      let targetH = 1080;
+      if (isShorts) {
+        targetW = 1080;
+        targetH = 1920;
+      } else {
+        const resSelect = document.getElementById('videoResolutionSelect')?.value || '1080';
+        targetW = resSelect === '720' ? 1280 : 1920;
+        targetH = resSelect === '720' ? 720 : 1080;
+      }
+      const scaleRatio = isShorts ? 1 : (targetW / 1920);
+
+      // Bitrate otimizado
       const targetBitrate = isMobileDevice
-        ? (targetW === 1920 ? 6000000 : 3000000)
-        : (targetW === 1920 ? 8000000 : 4500000);
+        ? (targetW >= 1080 ? 6000000 : 3000000)
+        : (targetW >= 1080 ? 8000000 : 4500000);
 
       function liberarRecursosTemporariosExportacao() {
         for (const c of cardsParaVideo) {
@@ -3851,15 +4395,15 @@ Prompt: Two round white pods shooting through outer space as a colossal crimson 
       const margin = 20;
 
       const durPorCard = parseFloat(document.getElementById('videoCardDuration').value) || 5;
-      const enableIntro = document.getElementById('enableIntroTransition')?.checked !== false;
-      const endScreenDur = parseFloat(document.getElementById('videoEndScreenDuration')?.value || 8);
+      const enableIntro = !isShorts && (document.getElementById('enableIntroTransition')?.checked !== false);
+      const endScreenDur = isShorts ? 0 : parseFloat(document.getElementById('videoEndScreenDuration')?.value || 8);
 
-      const introDur = enableIntro ? 8.2 : 0; // 8.2s para leitura tranquila do Card 3 antes do scroll
-      const scrollCardsDur = enableIntro
-        ? Math.max(4, (cardsParaVideo.length - 1) * durPorCard)
-        : (cardsParaVideo.length * durPorCard);
-      const totalScrollTime = scrollCardsDur + endScreenDur;
-      const duracaoTotal = introDur + totalScrollTime;
+      const introDur = enableIntro ? 8.2 : 0;
+      const scrollCardsDur = isShorts
+        ? (cardsParaVideo.length * durPorCard)
+        : (enableIntro ? Math.max(4, (cardsParaVideo.length - 1) * durPorCard) : (cardsParaVideo.length * durPorCard));
+      const totalScrollTime = isShorts ? scrollCardsDur : (scrollCardsDur + endScreenDur);
+      const duracaoTotal = isShorts ? scrollCardsDur : (introDur + totalScrollTime);
 
       // Carrega a trilha sonora base (sem duplicar na memória pela duração inteira do vídeo!)
       let dadosBaseAudio = null;
@@ -3896,28 +4440,30 @@ Prompt: Two round white pods shooting through outer space as a colossal crimson 
       // Função de renderização com escala automática
       function renderizarFrameInstante(tempo) {
         outCtx.save();
-        if (scaleRatio !== 1) {
-          outCtx.scale(scaleRatio, scaleRatio);
-        }
-
-        if (enableIntro && tempo < introDur) {
-          renderizarQuadroIntro(outCtx, cardsParaVideo, tempo);
+        if (isShorts) {
+          desenharQuadroShortsVertical(outCtx, cardsParaVideo, tempo, durPorCard, duracaoTotal);
         } else {
-          const tempoScroll = enableIntro ? (tempo - introDur) : tempo;
-          const progressoScroll = Math.min(1, Math.max(0, tempoScroll / scrollCardsDur));
-
-          // Aceleração suave nos primeiros 1.2s de scroll para início cinematográfico e sem tranco
-          let progressoAjustado = progressoScroll;
-          const rampa = Math.min(0.08, 1.2 / scrollCardsDur);
-          if (progressoScroll < rampa && rampa > 0) {
-            const t = progressoScroll / rampa;
-            progressoAjustado = rampa * (t * t * (3 - 2 * t));
+          if (scaleRatio !== 1) {
+            outCtx.scale(scaleRatio, scaleRatio);
           }
 
-          const currentScrollX = progressoAjustado * maxDeslocamento;
-          desenharQuadroEsteira(outCtx, cardsParaVideo, currentScrollX);
-        }
+          if (enableIntro && tempo < introDur) {
+            renderizarQuadroIntro(outCtx, cardsParaVideo, tempo);
+          } else {
+            const tempoScroll = enableIntro ? (tempo - introDur) : tempo;
+            const progressoScroll = Math.min(1, Math.max(0, tempoScroll / scrollCardsDur));
 
+            let progressoAjustado = progressoScroll;
+            const rampa = Math.min(0.08, 1.2 / scrollCardsDur);
+            if (progressoScroll < rampa && rampa > 0) {
+              const t = progressoScroll / rampa;
+              progressoAjustado = rampa * (t * t * (3 - 2 * t));
+            }
+
+            const currentScrollX = progressoAjustado * maxDeslocamento;
+            desenharQuadroEsteira(outCtx, cardsParaVideo, currentScrollX);
+          }
+        }
         outCtx.restore();
       }
 
@@ -4075,7 +4621,8 @@ Prompt: Two round white pods shooting through outer space as a colossal crimson 
                 cardsData, cardW, cardH, gap, margin,
                 enableIntro, introDur, scrollCardsDur, maxDeslocamento,
                 baseAudioCh0, baseAudioCh1, sampleRate: baseAudioSampleRate,
-                codecValido, usarAvcConfig, usarHardwareAccel
+                codecValido, usarAvcConfig, usarHardwareAccel,
+                isShorts, durPorCard, tituloHist: obterTituloHistoria()
               }, transferList);
 
               videoBlob = await workerPromise;
@@ -5694,6 +6241,76 @@ Retorne ESTRITAMENTE um objeto JSON válido neste formato:
     recuperarAutoSaveSeExistir();
   </script>
   <div id="toastNotification" class="toast-msg"></div>
+  <!-- MODAL KIT DE POSTAGEM YOUTUBE -->
+  <div class="modal-overlay" id="kitYouTubeModal">
+    <div class="modal-box" style="max-width: 720px; text-align: left; max-height: 90vh; overflow-y: auto;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+        <h3 style="background: linear-gradient(135deg, #ef4444, #f97316, #fbbf24); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-size: 22px; margin:0; display:flex; align-items:center; gap:8px;">
+          <span>📋</span> Kit de Postagem YouTube
+        </h3>
+        <button type="button" onclick="fecharModalKitYouTube()" style="background:transparent; border:none; color:#94a3b8; font-size:22px; cursor:pointer;">✕</button>
+      </div>
+      <p style="margin-bottom: 14px; font-size: 13px; color: var(--text-muted); line-height: 1.45;">
+        Tudo o que você precisa para publicar seu vídeo no YouTube com <strong>SEO profissional, alta taxa de cliques (CTR)</strong> e <strong>capítulos automáticos</strong>. Copie cada seção ou use o botão para baixar tudo empacotado!
+      </p>
+
+      <!-- BOTÃO DE CÓPIA RÁPIDA DE TUDO -->
+      <div style="display:flex; gap:10px; margin-bottom:16px; flex-wrap:wrap;">
+        <button type="button" class="btn-primary" onclick="copiarTudoKitYouTube()" style="flex:1; min-width:240px; padding:12px; font-size:13.5px; font-weight:800; background:linear-gradient(135deg, #ef4444, #f97316); border:none; display:flex; align-items:center; justify-content:center; gap:8px;">
+          <span>📋</span> Copiar Todo o Kit (Área de Transferência)
+        </button>
+        <button type="button" class="btn-secondary" onclick="baixarArquivoTxtKitYouTube()" style="padding:12px 16px; font-size:13px; font-weight:700; display:flex; align-items:center; gap:6px;">
+          <span>💾</span> Salvar em .TXT
+        </button>
+      </div>
+
+      <!-- SEÇÃO 1: TÍTULOS VIRAIS (TESTE A/B) -->
+      <div style="background:#111317; border:1px solid #282f3a; border-radius:10px; padding:12px 14px; margin-bottom:14px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+          <strong style="color:#fbbf24; font-size:13.5px;">🎯 3 Opções de Título Viral (Teste A/B)</strong>
+          <span style="font-size:11px; color:#94a3b8;">Estilo Goku Show / What-If</span>
+        </div>
+        <div id="kitTitulosList" style="display:flex; flex-direction:column; gap:8px;"></div>
+      </div>
+
+      <!-- SEÇÃO 2: CAPÍTULOS / TIMESTAMPS -->
+      <div style="background:#111317; border:1px solid #282f3a; border-radius:10px; padding:12px 14px; margin-bottom:14px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+          <strong style="color:#38bdf8; font-size:13.5px;">⏱️ Capítulos / Timestamps Automáticos</strong>
+          <button type="button" onclick="copiarTextoElemento('kitTimestampsText', 'Capítulos copiados!')" style="background:#1e293b; border:1px solid #334155; color:#38bdf8; font-size:11px; font-weight:700; padding:4px 10px; border-radius:5px; cursor:pointer;">
+            📋 Copiar Capítulos
+          </button>
+        </div>
+        <textarea id="kitTimestampsText" rows="5" readonly style="width:100%; background:#0c0e12; border:1px solid #232936; border-radius:6px; color:#e2e8f0; font-family:monospace; font-size:12px; padding:8px; resize:vertical;"></textarea>
+      </div>
+
+      <!-- SEÇÃO 3: DESCRIÇÃO COMPLETA COM SEO -->
+      <div style="background:#111317; border:1px solid #282f3a; border-radius:10px; padding:12px 14px; margin-bottom:14px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+          <strong style="color:#4ade80; font-size:13.5px;">📝 Descrição Completa do Vídeo (com SEO)</strong>
+          <button type="button" onclick="copiarTextoElemento('kitDescricaoText', 'Descrição copiada!')" style="background:#1e293b; border:1px solid #334155; color:#4ade80; font-size:11px; font-weight:700; padding:4px 10px; border-radius:5px; cursor:pointer;">
+            📋 Copiar Descrição
+          </button>
+        </div>
+        <textarea id="kitDescricaoText" rows="7" readonly style="width:100%; background:#0c0e12; border:1px solid #232936; border-radius:6px; color:#e2e8f0; font-family:inherit; font-size:12.5px; padding:8px; resize:vertical;"></textarea>
+      </div>
+
+      <!-- SEÇÃO 4: TAGS E HASHTAGS -->
+      <div style="background:#111317; border:1px solid #282f3a; border-radius:10px; padding:12px 14px; margin-bottom:14px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+          <strong style="color:#c084fc; font-size:13.5px;">🏷️ Tags para o YouTube Studio (Separadas por vírgula)</strong>
+          <button type="button" onclick="copiarTextoElemento('kitTagsText', 'Tags copiadas!')" style="background:#1e293b; border:1px solid #334155; color:#c084fc; font-size:11px; font-weight:700; padding:4px 10px; border-radius:5px; cursor:pointer;">
+            📋 Copiar Tags
+          </button>
+        </div>
+        <textarea id="kitTagsText" rows="3" readonly style="width:100%; background:#0c0e12; border:1px solid #232936; border-radius:6px; color:#e2e8f0; font-family:monospace; font-size:11.5px; padding:8px; resize:none;"></textarea>
+      </div>
+
+      <button class="btn-secondary" style="width:100%; padding:10px;" onclick="fecharModalKitYouTube()">
+        Fechar
+      </button>
+    </div>
+  </div>
 </body>
 
 </html>

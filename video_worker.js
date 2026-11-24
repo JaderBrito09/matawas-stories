@@ -30,7 +30,8 @@ self.onmessage = async function(e) {
     cardsData, cardW, cardH, gap, margin,
     enableIntro, introDur, scrollCardsDur, maxDeslocamento,
     baseAudioCh0, baseAudioCh1, sampleRate,
-    codecValido, usarAvcConfig, usarHardwareAccel
+    codecValido, usarAvcConfig, usarHardwareAccel,
+    isShorts, durPorCard, tituloHist
   } = data;
 
   try {
@@ -117,54 +118,138 @@ self.onmessage = async function(e) {
     // Função de desenho otimizada no OffscreenCanvas
     function renderizarFrame(tempo) {
       outCtx.save();
-      if (scaleRatio !== 1) {
-        outCtx.scale(scaleRatio, scaleRatio);
-      }
 
-      outCtx.fillStyle = '#0f1013';
-      outCtx.fillRect(0, 0, 1920, 1080);
+      if (isShorts) {
+        // RENDERIZAÇÃO VERTICAL 9:16 PARA YOUTUBE SHORTS (1080x1920)
+        outCtx.fillStyle = '#08090c';
+        outCtx.fillRect(0, 0, 1080, 1920);
 
-      if (enableIntro && tempo < introDur) {
-        const slots = [
-          { x: 20, y: 20, txtT: 0.2, imgT: 1.6 },
-          { x: 665, y: 20, txtT: 2.4, imgT: 3.8 },
-          { x: 1310, y: 20, txtT: 4.6, imgT: 6.0 }
-        ];
-        for (let i = 0; i < slots.length; i++) {
-          if (!cardsData[i]) continue;
-          const slot = slots[i];
-          if (tempo >= slot.imgT && cardsData[i].bitmap) {
-            const progress = Math.min(1, (tempo - slot.imgT) / 0.3);
-            outCtx.globalAlpha = progress;
-            outCtx.drawImage(cardsData[i].bitmap, slot.x, slot.y, cardW, cardH);
-            outCtx.globalAlpha = 1;
-          } else if (tempo >= slot.txtT && cardsData[i].txtBitmap) {
-            const progress = Math.min(1, (tempo - slot.txtT) / 0.35);
-            outCtx.globalAlpha = progress;
-            outCtx.drawImage(cardsData[i].txtBitmap, slot.x, slot.y + (cardH * 0.66), cardW, cardH * 0.34);
-            outCtx.globalAlpha = 1;
+        const numCards = cardsData.length;
+        if (numCards > 0) {
+          const cDur = durPorCard || 5;
+          const cardIdx = Math.min(numCards - 1, Math.floor(tempo / cDur));
+          const tempoNoCard = tempo - (cardIdx * cDur);
+          const cAtual = cardsData[cardIdx];
+          const cProx = cardIdx < numCards - 1 ? cardsData[cardIdx + 1] : null;
+
+          const cW = 840;
+          const cH = 1408;
+          const cX = 120;
+          const cY = 256;
+
+          const tempoTransicao = 0.35;
+          const emTransicao = tempoNoCard >= (cDur - tempoTransicao) && cProx;
+          const tProgress = emTransicao ? (tempoNoCard - (cDur - tempoTransicao)) / tempoTransicao : 0;
+          const ease = tProgress * tProgress * (3 - 2 * tProgress);
+
+          // 1. Fundo ambiente com a imagem do card atual
+          const bgBmp = cAtual.bitmap;
+          if (bgBmp) {
+            outCtx.save();
+            outCtx.globalAlpha = 0.22;
+            outCtx.drawImage(bgBmp, -40, -40, 1160, 2000);
+            outCtx.restore();
           }
+
+          // Vinheta superior e inferior
+          const gradV = outCtx.createLinearGradient(0, 0, 0, 1920);
+          gradV.addColorStop(0, 'rgba(0,0,0,0.85)');
+          gradV.addColorStop(0.2, 'rgba(0,0,0,0.4)');
+          gradV.addColorStop(0.8, 'rgba(0,0,0,0.4)');
+          gradV.addColorStop(1, 'rgba(0,0,0,0.92)');
+          outCtx.fillStyle = gradV;
+          outCtx.fillRect(0, 0, 1080, 1920);
+
+          // 2. Desenho dos cards centralizados
+          if (emTransicao && cProx && cProx.bitmap) {
+            const shiftX = ease * (cW + 80);
+            if (cAtual.bitmap) {
+              outCtx.save();
+              outCtx.globalAlpha = 1 - (ease * 0.4);
+              outCtx.drawImage(cAtual.bitmap, cX - shiftX, cY, cW, cH);
+              outCtx.restore();
+            }
+            outCtx.save();
+            outCtx.globalAlpha = 0.6 + (ease * 0.4);
+            outCtx.drawImage(cProx.bitmap, cX + (cW + 80) - shiftX, cY, cW, cH);
+            outCtx.restore();
+          } else if (cAtual.bitmap) {
+            outCtx.drawImage(cAtual.bitmap, cX, cY, cW, cH);
+          }
+
+          // 3. Indicador e barra de progresso no topo do Shorts
+          outCtx.save();
+          outCtx.fillStyle = '#ffffff';
+          outCtx.font = 'bold 28px sans-serif';
+          outCtx.textAlign = 'center';
+          if (tituloHist) {
+            const titCortado = tituloHist.length > 32 ? tituloHist.slice(0, 32) + '...' : tituloHist;
+            outCtx.fillText(titCortado.toUpperCase(), 540, 115);
+          }
+          outCtx.font = '600 20px sans-serif';
+          outCtx.fillStyle = '#94a3b8';
+          outCtx.fillText(`CENA ${cardIdx + 1} DE ${numCards}`, 540, 155);
+
+          const totalT = duracaoTotal || (numCards * cDur);
+          const pctGeral = Math.min(1, Math.max(0, tempo / totalT));
+          outCtx.fillStyle = 'rgba(255,255,255,0.2)';
+          outCtx.fillRect(60, 185, 960, 6);
+          outCtx.fillStyle = '#ff4757';
+          outCtx.fillRect(60, 185, 960 * pctGeral, 6);
+          outCtx.restore();
         }
+
       } else {
-        const tempoScroll = enableIntro ? (tempo - introDur) : tempo;
-        const progressoScroll = Math.min(1, Math.max(0, tempoScroll / scrollCardsDur));
-        let progressoAjustado = progressoScroll;
-        const rampa = Math.min(0.08, 1.2 / scrollCardsDur);
-        if (progressoScroll < rampa && rampa > 0) {
-          const t = progressoScroll / rampa;
-          progressoAjustado = rampa * (t * t * (3 - 2 * t));
+        // RENDERIZAÇÃO HORIZONTAL 16:9 PADRÃO YOUTUBE
+        if (scaleRatio !== 1) {
+          outCtx.scale(scaleRatio, scaleRatio);
         }
 
-        const currentScrollX = progressoAjustado * maxDeslocamento;
-        const minX = currentScrollX - cardW;
-        const maxX = currentScrollX + 1920;
-        const firstIdx = Math.max(0, Math.floor((minX - margin) / step));
-        const lastIdx = Math.min(cardsData.length - 1, Math.ceil((maxX - margin) / step));
+        outCtx.fillStyle = '#0f1013';
+        outCtx.fillRect(0, 0, 1920, 1080);
 
-        for (let i = firstIdx; i <= lastIdx; i++) {
-          const cardX = Math.round((margin + i * step) - currentScrollX);
-          if (cardX + cardW >= -20 && cardX <= 1940 && cardsData[i].bitmap) {
-            outCtx.drawImage(cardsData[i].bitmap, cardX, 20);
+        if (enableIntro && tempo < introDur) {
+          const slots = [
+            { x: 20, y: 20, txtT: 0.2, imgT: 1.6 },
+            { x: 665, y: 20, txtT: 2.4, imgT: 3.8 },
+            { x: 1310, y: 20, txtT: 4.6, imgT: 6.0 }
+          ];
+          for (let i = 0; i < slots.length; i++) {
+            if (!cardsData[i]) continue;
+            const slot = slots[i];
+            if (tempo >= slot.imgT && cardsData[i].bitmap) {
+              const progress = Math.min(1, (tempo - slot.imgT) / 0.3);
+              outCtx.globalAlpha = progress;
+              outCtx.drawImage(cardsData[i].bitmap, slot.x, slot.y, cardW, cardH);
+              outCtx.globalAlpha = 1;
+            } else if (tempo >= slot.txtT && cardsData[i].txtBitmap) {
+              const progress = Math.min(1, (tempo - slot.txtT) / 0.35);
+              outCtx.globalAlpha = progress;
+              outCtx.drawImage(cardsData[i].txtBitmap, slot.x, slot.y + (cardH * 0.66), cardW, cardH * 0.34);
+              outCtx.globalAlpha = 1;
+            }
+          }
+        } else {
+          const tempoScroll = enableIntro ? (tempo - introDur) : tempo;
+          const progressoScroll = Math.min(1, Math.max(0, tempoScroll / scrollCardsDur));
+          let progressoAjustado = progressoScroll;
+          const rampa = Math.min(0.08, 1.2 / scrollCardsDur);
+          if (progressoScroll < rampa && rampa > 0) {
+            const t = progressoScroll / rampa;
+            progressoAjustado = rampa * (t * t * (3 - 2 * t));
+          }
+
+          const currentScrollX = progressoAjustado * maxDeslocamento;
+          const minX = currentScrollX - cardW;
+          const maxX = currentScrollX + 1920;
+          const firstIdx = Math.max(0, Math.floor((minX - margin) / step));
+          const lastIdx = Math.min(cardsData.length - 1, Math.ceil((maxX - margin) / step));
+
+          for (let i = firstIdx; i <= lastIdx; i++) {
+            const cardX = Math.round((margin + i * step) - currentScrollX);
+            if (cardX + cardW >= -20 && cardX <= 1940 && cardsData[i].bitmap) {
+              outCtx.drawImage(cardsData[i].bitmap, cardX, 20);
+            }
           }
         }
       }
@@ -202,7 +287,9 @@ self.onmessage = async function(e) {
       if (frame % 4 === 0 || frame === totalFrames - 1) {
         const pct = Math.round(15 + ((frame / totalFrames) * 75));
         let faseNome = "Scroll Contínuo";
-        if (enableIntro && tempoAtual < introDur) {
+        if (isShorts) {
+          faseNome = "Renderizando Shorts 9:16";
+        } else if (enableIntro && tempoAtual < introDur) {
           faseNome = "Intro 3 Cards";
         } else {
           const tempoScroll = enableIntro ? (tempoAtual - introDur) : tempoAtual;
