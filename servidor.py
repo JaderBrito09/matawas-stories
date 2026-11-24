@@ -8,6 +8,11 @@ import http.server
 import json
 import os
 import socketserver
+import subprocess
+import tempfile
+import urllib.parse
+import shutil
+import time
 
 PORT = 8080
 
@@ -53,6 +58,13 @@ class MatawasRequestHandler(http.server.SimpleHTTPRequestHandler):
         # Mantém a saída limpa
         pass
 
+    def do_OPTIONS(self):
+        self.send_response(200)
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type, Content-Length, X-Requested-With")
+        self.end_headers()
+
     def do_GET(self):
         # Endpoint para entregar as configurações seguras do .env ao frontend
         if self.path == "/api/config":
@@ -72,6 +84,16 @@ class MatawasRequestHandler(http.server.SimpleHTTPRequestHandler):
             self.wfile.write(json.dumps(resposta).encode("utf-8"))
             return
 
+        # Endpoint para verificar suporte do FFmpeg no servidor local
+        if self.path == "/api/status-ffmpeg":
+            tem_ffmpeg = shutil.which("ffmpeg") is not None
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json; charset=utf-8")
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.end_headers()
+            self.wfile.write(json.dumps({"ok": True, "ffmpeg": tem_ffmpeg}).encode("utf-8"))
+            return
+
         # Favicon silencioso para evitar 404
         if self.path == "/favicon.ico":
             self.send_response(204)
@@ -86,6 +108,124 @@ class MatawasRequestHandler(http.server.SimpleHTTPRequestHandler):
             return
 
         super().do_GET()
+
+    def do_POST(self):
+        parsed = urllib.parse.urlparse(self.path)
+        if parsed.path == "/api/processar-video":
+            params = urllib.parse.parse_qs(parsed.query)
+            trilha_escolhida = params.get("trilha", ["trilha_nova.mp3"])[0]
+
+            try:
+                content_length = int(self.headers.get("Content-Length", 0))
+            except ValueError:
+                content_length = 0
+
+            if content_length <= 0:
+                self.send_response(400)
+                self.send_header("Access-Control-Allow-Origin", "*")
+                self.end_headers()
+                self.wfile.write(b"Nenhum video enviado.")
+                return
+
+            video_data = self.rfile.read(content_length)
+
+            # Processamento de video com FFmpeg para compatibilidade total celular/YouTube
+            temp_in = tempfile.NamedTemporaryFile(suffix=".tmp", delete=False)
+            temp_out = tempfile.NamedTemporaryFile(suffix=".mp4", delete=False)
+            temp_in.close()
+            temp_out.close()
+
+            try:
+                with open(temp_in.name, "wb") as f:
+                    f.write(video_data)
+
+                duracao = 15.0
+                try:
+                    probe_cmd = [
+                        "ffprobe", "-v", "error",
+                        "-show_entries", "format=duration",
+                        "-of", "default=noprint_wrappers=1:nokey=1",
+                        temp_in.name
+                    ]
+                    probe_out = subprocess.check_output(probe_cmd, stderr=subprocess.DEVNULL).decode().strip()
+                    duracao = float(probe_out) if probe_out else 15.0
+                except Exception:
+                    duracao = 15.0
+
+                trilha_path = os.path.join(PROJECT_DIR, trilha_escolhida)
+                tem_trilha = trilha_escolhida != "none" and os.path.exists(trilha_path)
+
+                fade_start = max(0.0, duracao - 1.5)
+
+                if tem_trilha:
+                    cmd = [
+                        "ffmpeg", "-y",
+                        "-i", temp_in.name,
+                        "-stream_loop", "-1", "-i", trilha_path,
+                        "-map", "0:v:0",
+                        "-map", "1:a:0",
+                        "-c:v", "libx264",
+                        "-pix_fmt", "yuv420p",
+                        "-profile:v", "high",
+                        "-level", "4.1",
+                        "-preset", "fast",
+                        "-crf", "19",
+                        "-t", str(duracao),
+                        "-filter:a", f"afade=t=out:st={fade_start:.2f}:d=1.5",
+                        "-c:a", "aac",
+                        "-b:a", "192k",
+                        "-ar", "44100",
+                        "-movflags", "+faststart",
+                        temp_out.name
+                    ]
+                else:
+                    cmd = [
+                        "ffmpeg", "-y",
+                        "-i", temp_in.name,
+                        "-c:v", "libx264",
+                        "-pix_fmt", "yuv420p",
+                        "-profile:v", "high",
+                        "-level", "4.1",
+                        "-preset", "fast",
+                        "-crf", "19",
+                        "-c:a", "aac",
+                        "-b:a", "192k",
+                        "-ar", "44100",
+                        "-movflags", "+faststart",
+                        temp_out.name
+                    ]
+
+                subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+                with open(temp_out.name, "rb") as f:
+                    final_bytes = f.read()
+
+                self.send_response(200)
+                self.send_header("Content-Type", "video/mp4")
+                self.send_header("Content-Length", str(len(final_bytes)))
+                self.send_header("Access-Control-Allow-Origin", "*")
+                self.send_header("Content-Disposition", 'attachment; filename="video_matawas_stories.mp4"')
+                self.end_headers()
+                self.wfile.write(final_bytes)
+                return
+
+            except Exception as err:
+                self.send_response(500)
+                self.send_header("Access-Control-Allow-Origin", "*")
+                self.end_headers()
+                self.wfile.write(f"Erro ao processar video: {err}".encode("utf-8"))
+                return
+            finally:
+                if os.path.exists(temp_in.name):
+                    try: os.remove(temp_in.name)
+                    except Exception: pass
+                if os.path.exists(temp_out.name):
+                    try: os.remove(temp_out.name)
+                    except Exception: pass
+
+        self.send_response(404)
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.end_headers()
 
 class ReusableThreadingHTTPServer(http.server.ThreadingHTTPServer):
     allow_reuse_address = True
