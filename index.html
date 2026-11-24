@@ -789,8 +789,8 @@
       </button>
       <button class="btn-primary" onclick="abrirModalKitYouTube()"
         style="padding: 8px 14px; font-size: 13px; font-weight: 800; background: linear-gradient(135deg, #ef4444, #f97316); border:none; box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4); display:flex; align-items:center; gap:6px;"
-        title="Gera títulos virais, capítulos com minutagem, descrição completa e tags para o YouTube!">
-        <span>📋</span> Kit YouTube
+        title="Generate viral titles, chapters, description, and tags for YouTube in English!">
+        <span>📋</span> YouTube Kit
       </button>
       <button class="btn-thumb-goku" onclick="abrirModalThumbnailGokuShow()"
         title="Crie uma thumbnail profissional de 3 quadros igual às do canal Goku Show!">
@@ -1070,7 +1070,7 @@
         <button id="btnAbrirKitModal" type="button" onclick="abrirModalKitYouTube()"
           style="width:100%; padding:12px 14px; font-size:13.5px; font-weight:800; background:linear-gradient(135deg, #ef4444, #f97316); color:#ffffff; border:none; border-radius:8px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px; box-shadow:0 4px 14px rgba(239, 68, 68, 0.35); margin-bottom:10px;">
           <span style="font-size:16px;">📋</span>
-          <span>COPIAR KIT DE POSTAGEM YOUTUBE (TÍTULOS, DESCRIÇÃO E CAPÍTULOS)</span>
+          <span>OPEN YOUTUBE PUBLISHING KIT (TITLES, DESCRIPTION & CHAPTERS)</span>
         </button>
 
         <!-- Botão Secundário: Baixar Arquivo MP4 Avulso -->
@@ -3442,7 +3442,7 @@ Prompt: Two round white pods shooting through outer space as a colossal crimson 
       const enableIntro = !isShorts && (document.getElementById('enableIntroTransition')?.checked !== false);
       const introDur = (!isShorts && enableIntro) ? 8.2 : 0;
 
-      // Filtra apenas cenas reais da história
+      // Filter only real story scenes
       const cenasReais = [];
       cards.forEach((c, idx) => {
         if (!isCardSubscribeOuMeta(c)) {
@@ -3450,120 +3450,171 @@ Prompt: Two round white pods shooting through outer space as a colossal crimson 
         }
       });
 
-      // Extrai entidades / personagens da história
+      // Extract entities / characters from the story
       const entidades = [];
       cenasReais.forEach(item => {
         const txt = `${item.card.title || ''} ${item.card.text || ''}`;
-        const matches = txt.match(/\b[A-ZÀ-Ú][a-zà-ú]{2,}\b/g) || [];
+        const matches = txt.match(/\b[A-Z][a-z]{2,}\b/g) || [];
         for (const m of matches) {
-          if (!/^(Cena|Scene|Card|Legenda|Prompt|Quando|Depois|Antes|Todos)$/i.test(m) && !entidades.includes(m)) {
+          if (!/^(Scene|Card|Caption|Prompt|When|Then|After|Before|Suddenly|Meanwhile|Everyone|Everything|Because|Where|Which|Their|There|They|With|Cena|Legenda)$/i.test(m) && !entidades.includes(m)) {
             entidades.push(m);
           }
         }
       });
 
       const p1 = entidades[0] || 'Bardock';
-      const p2 = entidades.find(e => e !== p1) || 'Raditz';
+      const p2 = entidades.find(e => e !== p1) || 'Goku';
 
-      let tituloPrincipal = tituloHist || `O Destino de ${p1}`;
+      // Clean base title (if user provided one in the script or prompt)
+      let cleanTitle = (tituloHist || '').trim();
+      if (cleanTitle) {
+        cleanTitle = cleanTitle.replace(/^(titulo|title)\s*:\s*/i, '').trim();
+      }
+
+      // 1. SHORT VIRAL TITLES (GOKU SHOW STYLE)
       let titulos = [];
       if (isShorts) {
         titulos = [
-          `😱 ELE REALMENTE FEZ ISSO?! ${p1} vs O Destino! #Shorts`,
-          `O SEGREDO DE ${p1.toUpperCase()}! A Verdade Revelada 🔥 #Shorts`,
-          `E SE ${p1.toUpperCase()} TIVESSE SOBREVIVIDO?! 🤯 #Shorts`
+          `What If ${p1} Did THIS?! 🤯 #Shorts`,
+          `The Secret of ${p1}! 🔥 #Shorts`,
+          `What If ${p1} Survived?! #Shorts`
         ];
       } else {
+        const baseTitleOption = cleanTitle || `What If ${p1} Survived?`;
         titulos = [
-          `E Se ${p1} Tivesse Descoberto a Verdade? O Destino de ${p2}! (História Completa)`,
-          `O SEGREDO DE ${p1.toUpperCase()}! A Escolha Que Mudou o Destino do Universo`,
-          `${tituloPrincipal.toUpperCase()}! A Lenda Saiyajin Nunca Revelada (Manga Stories)`
+          baseTitleOption,
+          `The Secret of ${p1}!`,
+          `What If ${p1} Met ${p2}?`
         ];
+        if (cleanTitle && !titulos.includes(cleanTitle)) {
+          titulos[0] = cleanTitle;
+        }
       }
 
-      // 2. TIMESTAMPS / CAPÍTULOS
-      let timestamps = [];
-      let tempoAcumulado = 0;
+      const tituloPrincipal = cleanTitle || titulos[0];
 
-      if (introDur > 0) {
-        timestamps.push(`00:00 - Introdução / O Ponto de Virada`);
-        tempoAcumulado = introDur;
-      } else {
-        timestamps.push(`00:00 - Início da História`);
-      }
+      // 2. TIMESTAMPS / CHAPTERS (YouTube requires >= 10s between chapters; spaced at 45s+ as requested)
+      const timestamps = [];
+      const totalDuracaoEstimada = (cenasReais.length * durPorCard) + introDur + (isShorts ? 0 : 8);
+      const minIntervalSec = 45; // At least 45 seconds between chapters
+
+      timestamps.push(`00:00 - Introduction`);
+      let lastChapterTime = 0;
+      let chapterCount = 1;
 
       cenasReais.forEach((item, pos) => {
-        if (pos > 0 || introDur > 0) {
-          const min = Math.floor(tempoAcumulado / 60);
-          const seg = Math.floor(tempoAcumulado % 60);
+        const tempoCena = introDur + (pos * durPorCard);
+        if (tempoCena - lastChapterTime >= minIntervalSec && (totalDuracaoEstimada - tempoCena >= 20)) {
+          const min = Math.floor(tempoCena / 60);
+          const seg = Math.floor(tempoCena % 60);
           const mmss = `${String(min).padStart(2, '0')}:${String(seg).padStart(2, '0')}`;
-          let descCena = (item.card.text || '').replace(/[^\w\sà-úÀ-Ú]/g, '').trim().split(/\s+/).slice(0, 5).join(' ');
-          if (!descCena) descCena = `Cena ${pos + 1}`;
-          timestamps.push(`${mmss} - ${item.card.title || `Cena ${pos + 1}`}: ${descCena}`);
+
+          let chapterTitle = '';
+          if (item.card.title && !/^(Cena|Scene|Card)\s*\d*$/i.test(item.card.title.trim())) {
+            chapterTitle = item.card.title.trim().replace(/^[\d\.\-\s:]+/, '');
+          }
+
+          if (!chapterTitle) {
+            const fallbackTitles = [
+              "The Turning Point",
+              "A Hidden Truth",
+              "The Confrontation",
+              "Unleashed Power",
+              "The Awakening",
+              "Desperate Battle",
+              "Fate Revealed"
+            ];
+            chapterTitle = fallbackTitles[(chapterCount - 1) % fallbackTitles.length];
+          } else {
+            // Keep chapter titles short and punchy (up to 4 words)
+            chapterTitle = chapterTitle.split(/\s+/).slice(0, 4).join(' ');
+          }
+
+          timestamps.push(`${mmss} - ${chapterTitle}`);
+          lastChapterTime = tempoCena;
+          chapterCount++;
         }
-        tempoAcumulado += durPorCard;
       });
 
-      if (!isShorts) {
+      if (!isShorts && totalDuracaoEstimada - lastChapterTime >= 30) {
         const endScreenDur = parseFloat(document.getElementById('videoEndScreenDuration')?.value || 8);
-        if (endScreenDur > 0) {
-          const minF = Math.floor(tempoAcumulado / 60);
-          const segF = Math.floor(tempoAcumulado % 60);
-          const mmssF = `${String(minF).padStart(2, '0')}:${String(segF).padStart(2, '0')}`;
-          timestamps.push(`${mmssF} - Conclusão e Tela Final`);
-        }
+        const tempoFinal = Math.max(lastChapterTime + 30, totalDuracaoEstimada - endScreenDur);
+        const minF = Math.floor(tempoFinal / 60);
+        const segF = Math.floor(tempoFinal % 60);
+        const mmssF = `${String(minF).padStart(2, '0')}:${String(segF).padStart(2, '0')}`;
+        timestamps.push(`${mmssF} - The Climax & Resolution`);
+      }
+
+      // YouTube requires at least 3 chapters in the description for timestamps to appear on the player
+      if (timestamps.length < 3 && totalDuracaoEstimada >= 30) {
+        timestamps.length = 0;
+        timestamps.push(`00:00 - Introduction`);
+        const midTime = Math.floor(totalDuracaoEstimada * 0.5);
+        const minM = Math.floor(midTime / 60);
+        const segM = Math.floor(midTime % 60);
+        timestamps.push(`${String(minM).padStart(2, '0')}:${String(segM).padStart(2, '0')} - The Turning Point`);
+
+        const finalTime = Math.floor(totalDuracaoEstimada * 0.85);
+        const minF = Math.floor(finalTime / 60);
+        const segF = Math.floor(finalTime % 60);
+        timestamps.push(`${String(minF).padStart(2, '0')}:${String(segF).padStart(2, '0')} - Final Resolution`);
       }
 
       const textoTimestamps = timestamps.join('\n');
 
-      // 3. DESCRIÇÃO COMPLETA COM SEO
+      // 3. FULL SEO DESCRIPTION (100% IN ENGLISH)
       let sinopse = cenasReais.slice(0, 3).map(c => (c.card.text || '').trim()).filter(Boolean).join(' ');
-      if (sinopse.length > 250) sinopse = sinopse.slice(0, 250).trim() + '...';
+      if (sinopse.length > 280) sinopse = sinopse.slice(0, 280).trim() + '...';
+      if (!sinopse) {
+        sinopse = `Discover the untold events that changed the fate of the universe in this Dragon Ball What-If manga story!`;
+      }
 
       const trackEscolhida = document.getElementById('videoAudioTrackSelect')?.value || trilhaSonoraSelecionada || 'trilha_nova.mp3';
       const trackNome = trackEscolhida === 'trilha_nova.mp3' ? 'Angel Goku Theme (Alternative Dragon Balls)' : 'Dragon Ball Classic Emotional Theme';
 
       const hashtags = isShorts
-        ? '#Shorts #DragonBall #GokuShow #Anime #DragonBallSuper #WhatIf'
-        : '#DragonBall #GokuShow #AlternativeDragonBalls #WhatIfDragonBall #AnimeStories #MangaStories #DragonBallSuper';
+        ? '#Shorts #DragonBall #GokuShow #WhatIf #Anime #DBZ'
+        : '#DragonBall #GokuShow #WhatIfDragonBall #AlternativeDragonBalls #AnimeStories #MangaStories #DBZ #DragonBallSuper';
 
       const textoDescricao = `${tituloPrincipal.toUpperCase()}
-Uma história alternativa épica inspirada no universo de Dragon Ball e no canal Goku Show!
+An epic alternative Dragon Ball manga story inspired by the Goku Show style!
 
-📖 SINOPSE:
-${sinopse || 'Descubra os acontecimentos que mudaram para sempre o destino dos guerreiros mais poderosos do universo.'}
+📖 SYNOPSIS:
+${sinopse}
 
-⏱️ CAPÍTULOS DO VÍDEO:
+⏱️ CHAPTERS:
 ${textoTimestamps}
 
-🔔 INSCREVA-SE NO CANAL E ATIVE O SININHO!
-Deixe seu Like 👍 e comente o que você achou desta história e qual deve ser o próximo episódio!
+🔔 SUBSCRIBE & TURN ON NOTIFICATIONS!
+Drop a Like 👍 and comment below what you think about this story and what should happen in the next episode!
 
-🎵 Trilha Sonora: ${trackNome}
-🎨 Estilo Visual: Dragon Ball Manga Stories / Estilo Goku Show HD
+🎵 Soundtrack: ${trackNome}
+🎨 Visual Style: Dragon Ball Manga Stories / Goku Show HD Style
 
 ${hashtags}`;
 
-      // 4. TAGS
+      // 4. TAGS (100% IN ENGLISH)
       const baseTags = [
         'goku show',
-        'alternative dragon balls',
         'dragon ball what if',
-        'e se dragon ball',
+        'what if dragon ball',
+        'alternative dragon balls',
         'manga stories',
-        'historia dragon ball',
+        'dragon ball stories',
         'dragon ball super',
-        'anime edit',
-        'bardock',
-        'raditz',
-        'vegeta',
-        'dragon ball z'
+        'dragon ball z',
+        'anime what if',
+        'dragon ball',
+        'dbz',
+        'anime edit'
       ];
-      if (tituloPrincipal) {
-        baseTags.unshift(tituloPrincipal.toLowerCase());
+      if (cleanTitle) {
+        const titTag = cleanTitle.toLowerCase().replace(/[?!:.,]/g, '').trim();
+        if (!baseTags.includes(titTag)) baseTags.unshift(titTag);
       }
       entidades.forEach(e => {
-        if (!baseTags.includes(e.toLowerCase())) baseTags.push(e.toLowerCase());
+        const eTag = e.toLowerCase();
+        if (!baseTags.includes(eTag)) baseTags.push(eTag);
       });
       if (isShorts) baseTags.unshift('shorts', 'youtube shorts', 'anime shorts');
       const textoTags = baseTags.slice(0, 18).join(', ');
@@ -3583,22 +3634,22 @@ ${hashtags}`;
 
       const kit = gerarKitPostagemYouTube();
 
-      // Renderiza as 3 opções de título
+      // Render 3 short title options (Goku Show style)
       const titulosList = document.getElementById('kitTitulosList');
       if (titulosList) {
         titulosList.innerHTML = kit.titulos.map((t, idx) => `
           <div style="display:flex; justify-content:space-between; align-items:center; background:#0c0e12; border:1px solid #232936; border-radius:6px; padding:8px 12px; gap:8px;">
             <div style="font-size:12.5px; color:#fff; font-weight:700; word-break:break-word;">
-              <span style="color:#fbbf24; font-size:11px; margin-right:4px;">Opção ${idx + 1}:</span> ${t}
+              <span style="color:#fbbf24; font-size:11px; margin-right:4px;">Option ${idx + 1}:</span> ${t}
             </div>
-            <button type="button" onclick="copiarTexto('${t.replace(/'/g, "\\'")}', 'Título copiado!')" style="background:#1e293b; border:1px solid #334155; color:#fbbf24; font-size:11px; font-weight:700; padding:4px 8px; border-radius:4px; cursor:pointer; white-space:nowrap;">
-              📋 Copiar
+            <button type="button" onclick="copiarTexto('${t.replace(/'/g, "\\'")}', 'Title copied!')" style="background:#1e293b; border:1px solid #334155; color:#fbbf24; font-size:11px; font-weight:700; padding:4px 8px; border-radius:4px; cursor:pointer; white-space:nowrap;">
+              📋 Copy
             </button>
           </div>
         `).join('');
       }
 
-      // Preenche timestamps, descrição e tags
+      // Fill timestamps, description and tags
       const elTimestamps = document.getElementById('kitTimestampsText');
       if (elTimestamps) elTimestamps.value = kit.timestamps;
 
@@ -3616,13 +3667,13 @@ ${hashtags}`;
       if (modal) modal.style.display = 'none';
     }
 
-    function copiarTexto(texto, mensagemFeedback = "Copiado!") {
+    function copiarTexto(texto, mensagemFeedback = "Copied!") {
       if (!texto) return;
       if (navigator.clipboard && navigator.clipboard.writeText) {
         navigator.clipboard.writeText(texto).then(() => {
           mostrarToast(`✓ ${mensagemFeedback}`);
         }).catch(() => {
-          mostrarToast("Erro ao copiar para área de transferência.", true);
+          mostrarToast("Failed to copy to clipboard.", true);
         });
       } else {
         const ta = document.createElement('textarea');
@@ -3635,7 +3686,7 @@ ${hashtags}`;
       }
     }
 
-    function copiarTextoElemento(elemId, mensagemFeedback = "Copiado!") {
+    function copiarTextoElemento(elemId, mensagemFeedback = "Copied!") {
       const el = document.getElementById(elemId);
       if (el) copiarTexto(el.value, mensagemFeedback);
     }
@@ -3643,57 +3694,57 @@ ${hashtags}`;
     function copiarTudoKitYouTube() {
       const kit = gerarKitPostagemYouTube();
       const tudo = `=====================================================
-KIT DE PUBLICAÇÃO YOUTUBE - ${kit.tituloPrincipal.toUpperCase()}
+YOUTUBE PUBLISHING KIT - ${kit.tituloPrincipal.toUpperCase()}
 =====================================================
 
-🎯 TÍTULOS RECOMENDADOS (TESTE A/B):
-Opção 1: ${kit.titulos[0]}
-Opção 2: ${kit.titulos[1]}
-Opção 3: ${kit.titulos[2]}
+🎯 RECOMMENDED VIRAL TITLES (GOKU SHOW STYLE):
+Option 1: ${kit.titulos[0]}
+Option 2: ${kit.titulos[1]}
+Option 3: ${kit.titulos[2]}
 
 -----------------------------------------------------
-⏱️ CAPÍTULOS / TIMESTAMPS:
+⏱️ TIMESTAMPS / CHAPTERS:
 -----------------------------------------------------
 ${kit.timestamps}
 
 -----------------------------------------------------
-📝 DESCRIÇÃO COMPLETA COM SEO:
+📝 FULL VIDEO DESCRIPTION (SEO OPTIMIZED):
 -----------------------------------------------------
 ${kit.descricao}
 
 -----------------------------------------------------
-🏷️ TAGS (YOUTUBE STUDIO):
+🏷️ YOUTUBE STUDIO TAGS:
 -----------------------------------------------------
 ${kit.tags}
 `;
-      copiarTexto(tudo, "Kit Completo copiado para a área de transferência!");
+      copiarTexto(tudo, "Full Kit copied to clipboard!");
     }
 
     function baixarArquivoTxtKitYouTube() {
       const kit = gerarKitPostagemYouTube();
       const titulo = obterTituloHistoria();
-      const nomeBase = sanitizarNomeArquivo(titulo, `kit_youtube_${Date.now()}`);
+      const nomeBase = sanitizarNomeArquivo(titulo, `youtube_kit_${Date.now()}`);
       const texto = `=====================================================
-KIT DE PUBLICAÇÃO YOUTUBE - ${kit.tituloPrincipal.toUpperCase()}
+YOUTUBE PUBLISHING KIT - ${kit.tituloPrincipal.toUpperCase()}
 =====================================================
 
-🎯 TÍTULOS RECOMENDADOS (TESTE A/B):
-Opção 1: ${kit.titulos[0]}
-Opção 2: ${kit.titulos[1]}
-Opção 3: ${kit.titulos[2]}
+🎯 RECOMMENDED VIRAL TITLES (GOKU SHOW STYLE):
+Option 1: ${kit.titulos[0]}
+Option 2: ${kit.titulos[1]}
+Option 3: ${kit.titulos[2]}
 
 -----------------------------------------------------
-⏱️ CAPÍTULOS / TIMESTAMPS:
+⏱️ TIMESTAMPS / CHAPTERS:
 -----------------------------------------------------
 ${kit.timestamps}
 
 -----------------------------------------------------
-📝 DESCRIÇÃO COMPLETA COM SEO:
+📝 FULL VIDEO DESCRIPTION (SEO OPTIMIZED):
 -----------------------------------------------------
 ${kit.descricao}
 
 -----------------------------------------------------
-🏷️ TAGS (YOUTUBE STUDIO):
+🏷️ YOUTUBE STUDIO TAGS:
 -----------------------------------------------------
 ${kit.tags}
 `;
@@ -3701,14 +3752,14 @@ ${kit.tags}
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `${nomeBase}_kit_postagem.txt`;
+      link.download = `${nomeBase}_youtube_kit.txt`;
       document.body.appendChild(link);
       link.click();
       setTimeout(() => {
         try { document.body.removeChild(link); } catch(e){}
         try { URL.revokeObjectURL(url); } catch(e){}
       }, 1000);
-      mostrarToast(`📄 Arquivo ${nomeBase}_kit_postagem.txt salvo!`);
+      mostrarToast(`📄 File ${nomeBase}_youtube_kit.txt saved!`);
     }
 
     async function baixarPacoteCompletoZip() {
@@ -3760,30 +3811,30 @@ ${kit.tags}
         // 3. Adiciona o Kit de Publicação do YouTube (.txt)
         const kit = gerarKitPostagemYouTube();
         const textoKitCompleto = `=====================================================
-KIT DE PUBLICAÇÃO YOUTUBE - ${nomeBase.toUpperCase()}
+YOUTUBE PUBLISHING KIT - ${nomeBase.toUpperCase()}
 =====================================================
 
-🎯 TÍTULOS RECOMENDADOS (TESTE A/B):
-Opção 1: ${kit.titulos[0]}
-Opção 2: ${kit.titulos[1]}
-Opção 3: ${kit.titulos[2]}
+🎯 RECOMMENDED VIRAL TITLES (GOKU SHOW STYLE):
+Option 1: ${kit.titulos[0]}
+Option 2: ${kit.titulos[1]}
+Option 3: ${kit.titulos[2]}
 
 -----------------------------------------------------
-⏱️ CAPÍTULOS / TIMESTAMPS:
+⏱️ TIMESTAMPS / CHAPTERS:
 -----------------------------------------------------
 ${kit.timestamps}
 
 -----------------------------------------------------
-📝 DESCRIÇÃO COMPLETA COM SEO:
+📝 FULL VIDEO DESCRIPTION (SEO OPTIMIZED):
 -----------------------------------------------------
 ${kit.descricao}
 
 -----------------------------------------------------
-🏷️ TAGS (YOUTUBE STUDIO):
+🏷️ YOUTUBE STUDIO TAGS:
 -----------------------------------------------------
 ${kit.tags}
 `;
-        zip.file(`${nomeBase}_kit_postagem_youtube.txt`, textoKitCompleto);
+        zip.file(`${nomeBase}_youtube_kit.txt`, textoKitCompleto);
 
         // 4. Gera e dispara download do .zip
         const zipBlob = await zip.generateAsync({
@@ -6282,68 +6333,68 @@ Retorne ESTRITAMENTE um objeto JSON válido neste formato:
     <div class="modal-box" style="max-width: 720px; text-align: left; max-height: 90vh; overflow-y: auto;">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
         <h3 style="background: linear-gradient(135deg, #ef4444, #f97316, #fbbf24); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-size: 22px; margin:0; display:flex; align-items:center; gap:8px;">
-          <span>📋</span> Kit de Postagem YouTube
+          <span>📋</span> YouTube Publishing Kit
         </h3>
         <button type="button" onclick="fecharModalKitYouTube()" style="background:transparent; border:none; color:#94a3b8; font-size:22px; cursor:pointer;">✕</button>
       </div>
       <p style="margin-bottom: 14px; font-size: 13px; color: var(--text-muted); line-height: 1.45;">
-        Tudo o que você precisa para publicar seu vídeo no YouTube com <strong>SEO profissional, alta taxa de cliques (CTR)</strong> e <strong>capítulos automáticos</strong>. Copie cada seção ou use o botão para baixar tudo empacotado!
+        Everything you need to publish your video on YouTube with <strong>viral titles (Goku Show style), 45s+ spaced chapters</strong>, and <strong>high-ranking SEO</strong>.
       </p>
 
-      <!-- BOTÃO DE CÓPIA RÁPIDA DE TUDO -->
+      <!-- QUICK COPY ALL BUTTONS -->
       <div style="display:flex; gap:10px; margin-bottom:16px; flex-wrap:wrap;">
         <button type="button" class="btn-primary" onclick="copiarTudoKitYouTube()" style="flex:1; min-width:240px; padding:12px; font-size:13.5px; font-weight:800; background:linear-gradient(135deg, #ef4444, #f97316); border:none; display:flex; align-items:center; justify-content:center; gap:8px;">
-          <span>📋</span> Copiar Todo o Kit (Área de Transferência)
+          <span>📋</span> Copy Full Kit (Clipboard)
         </button>
         <button type="button" class="btn-secondary" onclick="baixarArquivoTxtKitYouTube()" style="padding:12px 16px; font-size:13px; font-weight:700; display:flex; align-items:center; gap:6px;">
-          <span>💾</span> Salvar em .TXT
+          <span>💾</span> Save .TXT File
         </button>
       </div>
 
-      <!-- SEÇÃO 1: TÍTULOS VIRAIS (TESTE A/B) -->
+      <!-- SECTION 1: SHORT VIRAL TITLES (A/B TESTING) -->
       <div style="background:#111317; border:1px solid #282f3a; border-radius:10px; padding:12px 14px; margin-bottom:14px;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-          <strong style="color:#fbbf24; font-size:13.5px;">🎯 3 Opções de Título Viral (Teste A/B)</strong>
-          <span style="font-size:11px; color:#94a3b8;">Estilo Goku Show / What-If</span>
+          <strong style="color:#fbbf24; font-size:13.5px;">🎯 3 Short Viral Titles (Goku Show Style - A/B Test)</strong>
+          <span style="font-size:11px; color:#94a3b8;">High CTR / Under 60 Chars</span>
         </div>
         <div id="kitTitulosList" style="display:flex; flex-direction:column; gap:8px;"></div>
       </div>
 
-      <!-- SEÇÃO 2: CAPÍTULOS / TIMESTAMPS -->
+      <!-- SECTION 2: TIMESTAMPS / CHAPTERS -->
       <div style="background:#111317; border:1px solid #282f3a; border-radius:10px; padding:12px 14px; margin-bottom:14px;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-          <strong style="color:#38bdf8; font-size:13.5px;">⏱️ Capítulos / Timestamps Automáticos</strong>
-          <button type="button" onclick="copiarTextoElemento('kitTimestampsText', 'Capítulos copiados!')" style="background:#1e293b; border:1px solid #334155; color:#38bdf8; font-size:11px; font-weight:700; padding:4px 10px; border-radius:5px; cursor:pointer;">
-            📋 Copiar Capítulos
+          <strong style="color:#38bdf8; font-size:13.5px;">⏱️ Video Chapters (Spaced 45s+ Apart)</strong>
+          <button type="button" onclick="copiarTextoElemento('kitTimestampsText', 'Chapters copied!')" style="background:#1e293b; border:1px solid #334155; color:#38bdf8; font-size:11px; font-weight:700; padding:4px 10px; border-radius:5px; cursor:pointer;">
+            📋 Copy Chapters
           </button>
         </div>
         <textarea id="kitTimestampsText" rows="5" readonly style="width:100%; background:#0c0e12; border:1px solid #232936; border-radius:6px; color:#e2e8f0; font-family:monospace; font-size:12px; padding:8px; resize:vertical;"></textarea>
       </div>
 
-      <!-- SEÇÃO 3: DESCRIÇÃO COMPLETA COM SEO -->
+      <!-- SECTION 3: FULL SEO DESCRIPTION -->
       <div style="background:#111317; border:1px solid #282f3a; border-radius:10px; padding:12px 14px; margin-bottom:14px;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-          <strong style="color:#4ade80; font-size:13.5px;">📝 Descrição Completa do Vídeo (com SEO)</strong>
-          <button type="button" onclick="copiarTextoElemento('kitDescricaoText', 'Descrição copiada!')" style="background:#1e293b; border:1px solid #334155; color:#4ade80; font-size:11px; font-weight:700; padding:4px 10px; border-radius:5px; cursor:pointer;">
-            📋 Copiar Descrição
+          <strong style="color:#4ade80; font-size:13.5px;">📝 Full Description (SEO & Credits in English)</strong>
+          <button type="button" onclick="copiarTextoElemento('kitDescricaoText', 'Description copied!')" style="background:#1e293b; border:1px solid #334155; color:#4ade80; font-size:11px; font-weight:700; padding:4px 10px; border-radius:5px; cursor:pointer;">
+            📋 Copy Description
           </button>
         </div>
         <textarea id="kitDescricaoText" rows="7" readonly style="width:100%; background:#0c0e12; border:1px solid #232936; border-radius:6px; color:#e2e8f0; font-family:inherit; font-size:12.5px; padding:8px; resize:vertical;"></textarea>
       </div>
 
-      <!-- SEÇÃO 4: TAGS E HASHTAGS -->
+      <!-- SECTION 4: TAGS -->
       <div style="background:#111317; border:1px solid #282f3a; border-radius:10px; padding:12px 14px; margin-bottom:14px;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-          <strong style="color:#c084fc; font-size:13.5px;">🏷️ Tags para o YouTube Studio (Separadas por vírgula)</strong>
-          <button type="button" onclick="copiarTextoElemento('kitTagsText', 'Tags copiadas!')" style="background:#1e293b; border:1px solid #334155; color:#c084fc; font-size:11px; font-weight:700; padding:4px 10px; border-radius:5px; cursor:pointer;">
-            📋 Copiar Tags
+          <strong style="color:#c084fc; font-size:13.5px;">🏷️ YouTube Studio Tags (English)</strong>
+          <button type="button" onclick="copiarTextoElemento('kitTagsText', 'Tags copied!')" style="background:#1e293b; border:1px solid #334155; color:#c084fc; font-size:11px; font-weight:700; padding:4px 10px; border-radius:5px; cursor:pointer;">
+            📋 Copy Tags
           </button>
         </div>
         <textarea id="kitTagsText" rows="3" readonly style="width:100%; background:#0c0e12; border:1px solid #232936; border-radius:6px; color:#e2e8f0; font-family:monospace; font-size:11.5px; padding:8px; resize:none;"></textarea>
       </div>
 
       <button class="btn-secondary" style="width:100%; padding:10px;" onclick="fecharModalKitYouTube()">
-        Fechar
+        Close
       </button>
     </div>
   </div>
