@@ -61,7 +61,7 @@
    GEMINI_API_KEY=sua_chave_do_google_ai_studio_aqui
    GEMINI_IMAGE_MODEL=gemini-3.1-flash-image
    GEMINI_LLM_MODEL=gemini-3.8-flash
-   PORT=8081
+   PORT=3000
    ```
 
 3. Inicie o servidor:
@@ -70,8 +70,8 @@
    ```
 
 4. Acesse no navegador:
-   - **No computador:** `http://localhost:8081`
-   - **No celular (mesmo Wi-Fi):** `http://[IP_DA_SUA_MAQUINA]:8081`
+   - **No computador:** `http://localhost:3000`
+   - **No celular (mesmo Wi-Fi):** `http://[IP_DA_SUA_MAQUINA]:3000`
 
 ---
 

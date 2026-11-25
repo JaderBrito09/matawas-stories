@@ -14,7 +14,7 @@ import urllib.parse
 import shutil
 import time
 
-PORT = 8080
+PORT = 3000
 
 def carregar_env():
     """Lê o arquivo .env e retorna um dicionário com as variáveis."""
@@ -22,7 +22,7 @@ def carregar_env():
         "GEMINI_API_KEY": "",
         "GEMINI_IMAGE_MODEL": "gemini-3.1-flash-image",
         "GEMINI_LLM_MODEL": "gemini-3.8-flash",
-        "PORT": 8080
+        "PORT": 3000
     }
     
     env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env")
@@ -40,13 +40,15 @@ def carregar_env():
     if "PORT" in env_vars:
         try:
             env_vars["PORT"] = int(env_vars["PORT"])
+            if env_vars["PORT"] == 8080:
+                env_vars["PORT"] = 3000
         except ValueError:
-            env_vars["PORT"] = 8080
+            env_vars["PORT"] = 3000
 
     return env_vars
 
 ENV = carregar_env()
-PORT = ENV.get("PORT", 8080)
+PORT = ENV.get("PORT", 3000)
 
 PROJECT_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -249,23 +251,50 @@ class ReusableThreadingHTTPServer(http.server.ThreadingHTTPServer):
 
 def iniciar_servidor():
     import threading
+    import socket
+
+    def testar_porta_livre(porta):
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+                s.bind(("", porta))
+                return True
+        except OSError:
+            return False
 
     portas_ativas = []
 
     def rodar_porta(porta):
-        while True:
-            try:
-                server = ReusableThreadingHTTPServer(("", porta), MatawasRequestHandler)
-                if porta not in portas_ativas:
-                    portas_ativas.append(porta)
-                    print(f"✓ Servidor Matawas Stories rodando na porta {porta}")
-                server.serve_forever()
-            except OSError:
-                time.sleep(1.5)
-            except Exception:
-                time.sleep(1.0)
+        try:
+            server = ReusableThreadingHTTPServer(("", porta), MatawasRequestHandler)
+            portas_ativas.append(porta)
+            print(f"✓ Servidor Matawas Stories rodando na porta {porta}")
+            server.serve_forever()
+        except OSError:
+            pass
+        except Exception:
+            pass
 
-    portas_candidatas = [8080, 8081, 8082]
+    porta_base = ENV.get("PORT", 3000)
+    if porta_base == 8080:
+        porta_base = 3000
+
+    # Busca portas livres evitando 8080
+    candidatas = [porta_base, 3000, 3001, 8090, 8091, 8888]
+    portas_para_tentar = []
+    for c in candidatas:
+        if c != 8080 and c not in portas_para_tentar:
+            portas_para_tentar.append(c)
+
+    portas_livres = [p for p in portas_para_tentar if testar_porta_livre(p)]
+    if not portas_livres:
+        for p in range(3002, 3200):
+            if testar_porta_livre(p):
+                portas_livres.append(p)
+                if len(portas_livres) >= 2:
+                    break
+
+    portas_candidatas = portas_livres[:2]
     threads = []
     for p in portas_candidatas:
         t = threading.Thread(target=rodar_porta, args=(p,), daemon=True)
@@ -274,10 +303,9 @@ def iniciar_servidor():
 
     # Dá um tempo para os sockets subirem
     import time
-    time.sleep(0.5)
+    time.sleep(0.4)
 
     def obter_ip_local():
-        import socket
         try:
             s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             s.connect(("8.8.8.8", 80))
@@ -288,6 +316,7 @@ def iniciar_servidor():
             return "localhost"
 
     ip_local = obter_ip_local()
+    portas_ativas.sort()
 
     print("👉 Acesse localmente por qualquer um dos links:")
     for p in portas_ativas:
