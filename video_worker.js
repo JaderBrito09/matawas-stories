@@ -48,7 +48,8 @@ self.onmessage = async function(e) {
     enableIntro, introDur, scrollCardsDur, maxDeslocamento,
     baseAudioCh0, baseAudioCh1, sampleRate,
     codecValido, usarAvcConfig, usarHardwareAccel,
-    isShorts, durPorCard, tituloHist
+    isShorts, durPorCard, tituloHist,
+    enableCinematicCamera = true, cinematicIntensity = 'gokushow'
   } = data;
 
   try {
@@ -208,9 +209,23 @@ self.onmessage = async function(e) {
           outCtx.fillStyle = gradV;
           outCtx.fillRect(0, 0, 1080, 1920);
 
-          // 2. Renderização dos cards da Esteira Contínua em 9:16
+          // 2. Renderização dos cards da Esteira Contínua em 9:16 com Ken Burns e Impact Shake
           const firstIdx = Math.max(0, cardIdx - 1);
           const lastIdx = Math.min(numCards - 1, cardIdx + 2);
+
+          // Tremor de impacto na transição de card
+          let shakeX = 0, shakeY = 0;
+          if (enableCinematicCamera && tempoNoCard < 0.52) {
+            const t = tempoNoCard / 0.52;
+            const decay = Math.exp(-4.8 * t);
+            const mult = cinematicIntensity === 'intenso' ? 1.6 : (cinematicIntensity === 'suave' ? 0.6 : 1.0);
+            const amp = 10 * mult * decay;
+            shakeX = Math.sin(tempoNoCard * 42) * amp;
+            shakeY = Math.cos(tempoNoCard * 52) * (amp * 0.7);
+          }
+
+          const zoomMult = cinematicIntensity === 'intenso' ? 1.075 : (cinematicIntensity === 'suave' ? 1.03 : 1.05);
+          const kenBurnsZoom = enableCinematicCamera ? (1.0 + ((zoomMult - 1.0) * (tempoNoCard / cDur))) : 1.0;
 
           for (let i = firstIdx; i <= lastIdx; i++) {
             const cardItem = cardsData[i];
@@ -218,6 +233,18 @@ self.onmessage = async function(e) {
             const posX = Math.round(heroX + (i * step) - currentScrollX);
 
             if (posX + cardW >= -50 && posX <= 1130) {
+              outCtx.save();
+              if (shakeX !== 0 || shakeY !== 0) {
+                outCtx.translate(shakeX, shakeY);
+              }
+              if (kenBurnsZoom !== 1.0 && i === cardIdx) {
+                const cX = posX + cardW / 2;
+                const cYCenter = cY + (cardH * 0.38);
+                outCtx.translate(cX, cYCenter);
+                outCtx.scale(kenBurnsZoom, kenBurnsZoom);
+                outCtx.translate(-cX, -cYCenter);
+              }
+
               outCtx.save();
               outCtx.shadowColor = 'rgba(0, 0, 0, 0.72)';
               outCtx.shadowBlur = 38;
@@ -235,6 +262,8 @@ self.onmessage = async function(e) {
               outCtx.strokeStyle = 'rgba(255, 255, 255, 0.14)';
               outCtx.lineWidth = 2;
               outCtx.stroke();
+              outCtx.restore();
+
               outCtx.restore();
             }
           }
@@ -273,10 +302,34 @@ self.onmessage = async function(e) {
             if (!cardsData[i]) continue;
             const slot = slots[i];
             if (tempo >= slot.imgT && cardsData[i].bitmap) {
-              const progress = Math.min(1, (tempo - slot.imgT) / 0.3);
+              const tempoVisivel = tempo - slot.imgT;
+              const progress = Math.min(1, tempoVisivel / 0.3);
+
+              let shakeX = 0, shakeY = 0;
+              if (enableCinematicCamera && tempoVisivel < 0.45) {
+                const t = tempoVisivel / 0.45;
+                const decay = Math.exp(-4.5 * t);
+                const mult = cinematicIntensity === 'intenso' ? 1.5 : (cinematicIntensity === 'suave' ? 0.6 : 1.0);
+                const amp = 8 * mult * decay;
+                shakeX = Math.sin(tempoVisivel * 38) * amp;
+                shakeY = Math.cos(tempoVisivel * 48) * (amp * 0.7);
+              }
+
+              const zoomMult = cinematicIntensity === 'intenso' ? 1.06 : (cinematicIntensity === 'suave' ? 1.025 : 1.04);
+              const kenBurns = enableCinematicCamera ? (1.0 + ((zoomMult - 1.0) * Math.min(1, tempoVisivel / 2.5))) : 1.0;
+
+              outCtx.save();
+              if (shakeX !== 0 || shakeY !== 0) outCtx.translate(shakeX, shakeY);
+              if (kenBurns !== 1.0) {
+                const cX = slot.x + cardW / 2;
+                const cYCenter = slot.y + (cardH * 0.35);
+                outCtx.translate(cX, cYCenter);
+                outCtx.scale(kenBurns, kenBurns);
+                outCtx.translate(-cX, -cYCenter);
+              }
               outCtx.globalAlpha = progress;
               outCtx.drawImage(cardsData[i].bitmap, slot.x, slot.y, cardW, cardH);
-              outCtx.globalAlpha = 1;
+              outCtx.restore();
             } else if (tempo >= slot.txtT && cardsData[i].txtBitmap) {
               const progress = Math.min(1, (tempo - slot.txtT) / 0.35);
               outCtx.globalAlpha = progress;
@@ -300,10 +353,38 @@ self.onmessage = async function(e) {
           const firstIdx = Math.max(0, Math.floor((minX - margin) / step));
           const lastIdx = Math.min(cardsData.length - 1, Math.ceil((maxX - margin) / step));
 
+          const cDur = durPorCard || 5;
+          const tempoNoCard = tempoScroll % cDur;
+          let shakeX = 0, shakeY = 0;
+          if (enableCinematicCamera && tempoNoCard < 0.45 && progressoScroll < 0.98) {
+            const t = tempoNoCard / 0.45;
+            const decay = Math.exp(-4.5 * t);
+            const mult = cinematicIntensity === 'intenso' ? 1.5 : (cinematicIntensity === 'suave' ? 0.6 : 1.0);
+            const amp = 7 * mult * decay;
+            shakeX = Math.sin(tempoNoCard * 38) * amp;
+            shakeY = Math.cos(tempoNoCard * 46) * (amp * 0.7);
+          }
+
           for (let i = firstIdx; i <= lastIdx; i++) {
             const cardX = Math.round((margin + i * step) - currentScrollX);
             if (cardX + cardW >= -20 && cardX <= 1940 && cardsData[i].bitmap) {
+              const cardCenterX = cardX + cardW / 2;
+              const distFromCenter = Math.abs(cardCenterX - 960);
+              const focus = Math.max(0, 1 - (distFromCenter / 480));
+              const zoomMult = cinematicIntensity === 'intenso' ? 1.055 : (cinematicIntensity === 'suave' ? 1.02 : 1.038);
+              const cardScale = enableCinematicCamera ? (1.0 + ((zoomMult - 1.0) * focus)) : 1.0;
+
+              outCtx.save();
+              if (shakeX !== 0 || shakeY !== 0) outCtx.translate(shakeX, shakeY);
+              if (cardScale > 1.002) {
+                const cX = cardCenterX;
+                const cYCenter = 20 + (cardH * 0.35);
+                outCtx.translate(cX, cYCenter);
+                outCtx.scale(cardScale, cardScale);
+                outCtx.translate(-cX, -cYCenter);
+              }
               outCtx.drawImage(cardsData[i].bitmap, cardX, 20);
+              outCtx.restore();
             }
           }
         }

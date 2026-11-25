@@ -963,6 +963,25 @@
             style="width:22px; height:22px; accent-color:#ff4757; cursor:pointer;">
         </div>
 
+        <div class="video-config-row" id="rowCinematicCamera">
+          <label>🎥 Câmera Dinâmica (Estilo Goku Show):</label>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <input type="checkbox" id="enableCinematicCamera" checked
+              style="width:22px; height:22px; accent-color:#38bdf8; cursor:pointer;"
+              onchange="document.getElementById('rowCinematicIntensity').style.display = this.checked ? 'flex' : 'none';">
+            <span style="font-size:12.5px; color:#38bdf8; font-weight:700;">Zoom Lento (Ken Burns) + Tremor de Impacto</span>
+          </div>
+        </div>
+
+        <div class="video-config-row" id="rowCinematicIntensity" style="background:rgba(56, 189, 248, 0.08); border:1px solid rgba(56, 189, 248, 0.25); border-radius:8px; padding:8px 12px; margin-top:-4px; margin-bottom:8px;">
+          <label style="font-size:12px; color:#94a3b8;">Intensidade do Movimento:</label>
+          <select id="videoCinematicIntensity" style="background:#111317; border:1px solid #38bdf8; color:#38bdf8; padding:5px 10px; border-radius:6px; font-size:12px; font-weight:700;">
+            <option value="suave">Suave (Zoom Sutil &amp; Tremor Leve)</option>
+            <option value="gokushow" selected>Padrão Goku Show (Impact Shake + Zoom Contínuo)</option>
+            <option value="intenso">Intenso (Ação Extrema / Shonen Máximo)</option>
+          </select>
+        </div>
+
         <div class="video-config-row">
           <label>Música de Fundo (Trilha GokuShow):</label>
           <select id="videoAudioTrackSelect" onchange="sincronizarSelectTrilhaModal(this.value)"
@@ -3646,7 +3665,7 @@ Prompt: [Prompt de imagem em inglês]`;
     }
 
     /* RENDERIZAÇÃO DA TRANSIÇÃO DOS 3 PRIMEIROS CARDS (ESTILO OFICIAL GOKUSHOW) */
-    function renderizarQuadroIntro(outCtx, cards, tempoAtual) {
+    function renderizarQuadroIntro(outCtx, cards, tempoAtual, enableCinematic = true, intensity = 'gokushow') {
       // Fundo cinematográfico idêntico ao da esteira para transição 100% perfeita
       outCtx.fillStyle = '#0f1013';
       outCtx.fillRect(0, 0, 1920, 1080);
@@ -3668,12 +3687,38 @@ Prompt: [Prompt de imagem em inglês]`;
           desenharSlotTexto(outCtx, cards[i], slot.x, slot.y, slot.w, slot.h, alphaTxt);
         }
 
-        // 2. Imagem surge logo em seguida com suave pop-in
+        // 2. Imagem surge logo em seguida com suave pop-in + Impact Shake + Ken Burns Dinâmico
         if (tempoAtual >= slot.imgT) {
-          const progressImg = Math.min(1, (tempoAtual - slot.imgT) / 0.3);
+          const tempoVisivel = tempoAtual - slot.imgT;
+          const progressImg = Math.min(1, tempoVisivel / 0.3);
           const alphaImg = progressImg;
-          const scaleImg = 0.96 + (0.04 * progressImg);
-          desenharSlotImagem(outCtx, cards[i], slot.x, slot.y, slot.w, slot.h, alphaImg, scaleImg);
+
+          let shakeX = 0, shakeY = 0;
+          if (enableCinematic && tempoVisivel < 0.45) {
+            const t = tempoVisivel / 0.45;
+            const decay = Math.exp(-4.6 * t);
+            const mult = intensity === 'intenso' ? 1.5 : (intensity === 'suave' ? 0.6 : 1.0);
+            const amp = 8 * mult * decay;
+            shakeX = Math.sin(tempoVisivel * 38) * amp;
+            shakeY = Math.cos(tempoVisivel * 48) * (amp * 0.7);
+          }
+
+          const zoomMult = intensity === 'intenso' ? 1.06 : (intensity === 'suave' ? 1.025 : 1.04);
+          const kenBurns = enableCinematic ? (0.96 + (0.04 * progressImg) + ((zoomMult - 1.0) * Math.min(1, tempoVisivel / 2.6))) : (0.96 + (0.04 * progressImg));
+
+          outCtx.save();
+          if (shakeX !== 0 || shakeY !== 0) {
+            outCtx.translate(shakeX, shakeY);
+          }
+          if (kenBurns !== 1.0) {
+            const cX = slot.x + slot.w / 2;
+            const cY = slot.y + (slot.h * 0.33);
+            outCtx.translate(cX, cY);
+            outCtx.scale(kenBurns, kenBurns);
+            outCtx.translate(-cX, -cY);
+          }
+          desenharSlotImagem(outCtx, cards[i], slot.x, slot.y, slot.w, slot.h, alphaImg, 1.0);
+          outCtx.restore();
         }
       }
     }
@@ -3746,7 +3791,7 @@ Prompt: [Prompt de imagem em inglês]`;
     }
 
     /* RENDERIZAÇÃO VIRTUALIZADA EM TEMPO REAL DA ESTEIRA (Zero consumo de VRAM, suporta centenas de cards) */
-    function desenharQuadroEsteira(outCtx, cards, currentScrollX) {
+    function desenharQuadroEsteira(outCtx, cards, currentScrollX, tempoScroll = 0, durPorCard = 5, enableCinematic = true, intensity = 'gokushow') {
       outCtx.fillStyle = '#0f1013';
       outCtx.fillRect(0, 0, 1920, 1080);
 
@@ -3755,6 +3800,19 @@ Prompt: [Prompt de imagem em inglês]`;
       const gap = 25;
       const margin = 20;
       const step = cardW + gap; // 645px
+
+      // Tremor de impacto suave a cada virada de cena na esteira
+      const cDur = durPorCard || 5;
+      const tempoNoCard = tempoScroll % cDur;
+      let shakeX = 0, shakeY = 0;
+      if (enableCinematic && tempoNoCard < 0.45) {
+        const t = tempoNoCard / 0.45;
+        const decay = Math.exp(-4.5 * t);
+        const mult = intensity === 'intenso' ? 1.5 : (intensity === 'suave' ? 0.6 : 1.0);
+        const amp = 7 * mult * decay;
+        shakeX = Math.sin(tempoNoCard * 38) * amp;
+        shakeY = Math.cos(tempoNoCard * 46) * (amp * 0.7);
+      }
 
       // Determinar faixa de índices visíveis no viewport [0, 1920]
       const minX = currentScrollX - cardW;
@@ -3766,12 +3824,31 @@ Prompt: [Prompt de imagem em inglês]`;
       for (let i = firstIndex; i <= lastIndex; i++) {
         const cardX = Math.round((margin + i * step) - currentScrollX);
         if (cardX + cardW >= -20 && cardX <= 1940) {
+          const cardCenterX = cardX + cardW / 2;
+          const distFromCenter = Math.abs(cardCenterX - 960);
+          const focus = Math.max(0, 1 - (distFromCenter / 480));
+          const zoomMult = intensity === 'intenso' ? 1.055 : (intensity === 'suave' ? 1.02 : 1.038);
+          const cardScale = enableCinematic ? (1.0 + ((zoomMult - 1.0) * focus)) : 1.0;
+
+          outCtx.save();
+          if (shakeX !== 0 || shakeY !== 0) {
+            outCtx.translate(shakeX, shakeY);
+          }
+          if (cardScale > 1.002) {
+            const cX = cardCenterX;
+            const cY = 20 + (cardH * 0.35);
+            outCtx.translate(cX, cY);
+            outCtx.scale(cardScale, cardScale);
+            outCtx.translate(-cX, -cY);
+          }
+
           if (cards[i]._cachedBitmap) {
             outCtx.drawImage(cards[i]._cachedBitmap, cardX, 20);
           } else {
             desenharSlotImagem(outCtx, cards[i], cardX, 20, cardW, cardH, 1, 1);
             desenharSlotTexto(outCtx, cards[i], cardX, 20, cardW, cardH, 1);
           }
+          outCtx.restore();
         }
       }
     }
@@ -4778,7 +4855,7 @@ ${kit.descricaoEspanhol}
     }
 
     // Desenho Vertical 9:16 para YouTube Shorts (Esteira Contínua com Deslize Suave e Fundo Imersivo)
-    function desenharQuadroShortsVertical(ctx, cards, tempo, durPorCard, duracaoTotal) {
+    function desenharQuadroShortsVertical(ctx, cards, tempo, durPorCard, duracaoTotal, enableCinematic = true, intensity = 'gokushow') {
       const numCards = cards.length;
       if (numCards === 0) return;
 
@@ -4793,6 +4870,18 @@ ${kit.descricaoEspanhol}
       const cardIdx = Math.min(numCards - 1, Math.floor(tempo / cDur));
       const nextIdx = Math.min(numCards - 1, cardIdx + 1);
       const tempoNoCard = tempo - (cardIdx * cDur);
+
+      // Tremor de impacto na virada de cada card
+      let shakeX = 0, shakeY = 0;
+      if (enableCinematic && tempoNoCard < 0.52) {
+        const t = tempoNoCard / 0.52;
+        const decay = Math.exp(-4.8 * t);
+        const isBattle = cards[cardIdx] && /fight|battle|vs|punch|hit|power|climax|transform|super|rage|kill|dead|blast|kamehameha|shock|secret/i.test(`${cards[cardIdx].title || ''} ${cards[cardIdx].text || ''}`);
+        const baseMult = intensity === 'intenso' ? 1.6 : (intensity === 'suave' ? 0.6 : 1.0);
+        const amp = (isBattle ? 13 : 9) * baseMult * decay;
+        shakeX = Math.sin(tempoNoCard * 42) * amp;
+        shakeY = Math.cos(tempoNoCard * 52) * (amp * 0.7);
+      }
 
       // Transição suave com deslize cinematográfico estilo Esteira Contínua
       const transDur = Math.min(0.95, cDur * 0.28);
@@ -4854,9 +4943,12 @@ ${kit.descricaoEspanhol}
       ctx.fillStyle = gradV;
       ctx.fillRect(0, 0, 1080, 1920);
 
-      // 2. Renderização dos cards da Esteira Contínua em 9:16
+      // 2. Renderização dos cards da Esteira Contínua em 9:16 com Ken Burns e Shake
       const firstIdx = Math.max(0, cardIdx - 1);
       const lastIdx = Math.min(numCards - 1, cardIdx + 2);
+
+      const zoomMult = intensity === 'intenso' ? 1.075 : (intensity === 'suave' ? 1.03 : 1.05);
+      const kenBurnsZoom = enableCinematic ? (1.0 + ((zoomMult - 1.0) * (tempoNoCard / cDur))) : 1.0;
 
       for (let i = firstIdx; i <= lastIdx; i++) {
         const card = cards[i];
@@ -4864,6 +4956,18 @@ ${kit.descricaoEspanhol}
         const posX = Math.round(heroX + (i * step) - currentScrollX);
 
         if (posX + cardW >= -50 && posX <= 1130) {
+          ctx.save();
+          if (shakeX !== 0 || shakeY !== 0) {
+            ctx.translate(shakeX, shakeY);
+          }
+          if (kenBurnsZoom !== 1.0 && i === cardIdx) {
+            const cX = posX + cardW / 2;
+            const cYCenter = cY + (cardH * 0.38);
+            ctx.translate(cX, cYCenter);
+            ctx.scale(kenBurnsZoom, kenBurnsZoom);
+            ctx.translate(-cX, -cYCenter);
+          }
+
           // Sombra profunda para destaque tridimensional
           ctx.save();
           ctx.shadowColor = 'rgba(0, 0, 0, 0.72)';
@@ -4887,6 +4991,8 @@ ${kit.descricaoEspanhol}
           ctx.strokeStyle = 'rgba(255, 255, 255, 0.14)';
           ctx.lineWidth = 2;
           ctx.stroke();
+          ctx.restore();
+
           ctx.restore();
         }
       }
@@ -5410,6 +5516,8 @@ ${kit.descricaoEspanhol}
 
       const durPorCard = parseFloat(document.getElementById('videoCardDuration').value) || 5;
       const enableIntro = !isShorts && (document.getElementById('enableIntroTransition')?.checked !== false);
+      const enableCinematicCamera = document.getElementById('enableCinematicCamera')?.checked !== false;
+      const cinematicIntensity = document.getElementById('videoCinematicIntensity')?.value || 'gokushow';
       const endScreenDur = isShorts ? 0 : parseFloat(document.getElementById('videoEndScreenDuration')?.value || 8);
 
       const introDur = enableIntro ? 8.2 : 0;
@@ -5455,14 +5563,14 @@ ${kit.descricaoEspanhol}
       function renderizarFrameInstante(tempo) {
         outCtx.save();
         if (isShorts) {
-          desenharQuadroShortsVertical(outCtx, cardsParaVideo, tempo, durPorCard, duracaoTotal);
+          desenharQuadroShortsVertical(outCtx, cardsParaVideo, tempo, durPorCard, duracaoTotal, enableCinematicCamera, cinematicIntensity);
         } else {
           if (scaleRatio !== 1) {
             outCtx.scale(scaleRatio, scaleRatio);
           }
 
           if (enableIntro && tempo < introDur) {
-            renderizarQuadroIntro(outCtx, cardsParaVideo, tempo);
+            renderizarQuadroIntro(outCtx, cardsParaVideo, tempo, enableCinematicCamera, cinematicIntensity);
           } else {
             const tempoScroll = enableIntro ? (tempo - introDur) : tempo;
             const progressoScroll = Math.min(1, Math.max(0, tempoScroll / scrollCardsDur));
@@ -5475,7 +5583,7 @@ ${kit.descricaoEspanhol}
             }
 
             const currentScrollX = progressoAjustado * maxDeslocamento;
-            desenharQuadroEsteira(outCtx, cardsParaVideo, currentScrollX);
+            desenharQuadroEsteira(outCtx, cardsParaVideo, currentScrollX, tempoScroll, durPorCard, enableCinematicCamera, cinematicIntensity);
           }
         }
         outCtx.restore();
@@ -5648,7 +5756,8 @@ ${kit.descricaoEspanhol}
                 enableIntro, introDur, scrollCardsDur, maxDeslocamento,
                 baseAudioCh0, baseAudioCh1, sampleRate: baseAudioSampleRate,
                 codecValido, usarAvcConfig, usarHardwareAccel,
-                isShorts, durPorCard, tituloHist: obterTituloHistoria()
+                isShorts, durPorCard, tituloHist: obterTituloHistoria(),
+                enableCinematicCamera, cinematicIntensity
               }, transferList);
 
               videoBlob = await workerPromise;
