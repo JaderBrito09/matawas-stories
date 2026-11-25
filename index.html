@@ -787,6 +787,10 @@
         title="Cole seu roteiro com cenas e deixe o Gemini criar todos os cards e imagens automaticamente!">
         🧠 O Gemini Resolve
       </button>
+      <button class="btn-gemini-resolve" style="background: linear-gradient(135deg, #8b5cf6, #ec4899); border:none; box-shadow: 0 4px 15px rgba(236, 72, 153, 0.35);" onclick="abrirModalContinuarHistoria()"
+        title="Gera automaticamente os próximos quadros (Parte 2) mantendo coerência com o final atual e cliffhanger!">
+        ⏩ Continuar História
+      </button>
       <button class="btn-primary" onclick="abrirModalKitYouTube()"
         style="padding: 8px 14px; font-size: 13px; font-weight: 800; background: linear-gradient(135deg, #ef4444, #f97316); border:none; box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4); display:flex; align-items:center; gap:6px;"
         title="Generate viral titles, chapters, description, and tags for YouTube in English!">
@@ -887,6 +891,8 @@
             Projeto</button>
           <button class="btn-gemini-resolve" style="padding: 7px 14px; font-size: 13px;"
             onclick="abrirModalGeminiResolve()">🧠 O Gemini Resolve</button>
+          <button class="btn-gemini-resolve" style="padding: 7px 14px; font-size: 13px; background: linear-gradient(135deg, #8b5cf6, #ec4899); border:none;"
+            onclick="abrirModalContinuarHistoria()" title="Gera a continuação da história (Parte 2) com IA">⏩ Continuar História</button>
           <button class="btn-secondary"
             style="padding: 7px 12px; font-size: 13px; border-color: #f59e0b; color: #fbbf24; font-weight: 700;"
             onclick="inserirCardSubscribeNoMeio()"
@@ -1300,6 +1306,79 @@
         onclick="togglePausarGeminiResolve()">⏸️ Pausar</button>
       <button class="btn-secondary" style="padding:6px 12px; font-size:12px; border-color:#ff4757; color:#ff4757;"
         onclick="cancelarGeminiResolve()">🛑 Parar</button>
+    </div>
+  </div>
+
+  <!-- MODAL CONTINUAR HISTÓRIA (PARTE 2 COM IA) -->
+  <div class="modal-overlay" id="modalContinuarHistoria">
+    <div class="modal-box" style="max-width: 620px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+        <h3 style="margin:0; display:flex; align-items:center; gap:8px;">
+          <span style="font-size:22px;">🧠</span> Continuar História (Parte 2 com IA)
+        </h3>
+        <button class="btn-secondary" style="padding:4px 8px; font-size:12px;" onclick="fecharModalContinuarHistoria()">✕</button>
+      </div>
+      <p style="font-size:13px; color:#94a3b8; margin-bottom:14px; text-align:left;">
+        O Gemini analisa o desfecho da sua história atual e escreve a sequência épica imediata mantendo coerência total de personagens, poderes e ritmo de mangá.
+      </p>
+
+      <!-- Contexto detectado -->
+      <div id="continuarContextoBox" style="background:#0f1117; border:1px solid #1e2430; border-radius:8px; padding:10px 14px; margin-bottom:16px; text-align:left;">
+        <div style="font-size:12px; font-weight:700; color:#38bdf8; margin-bottom:4px;">
+          📖 Baseado na história atual: <span id="continuarContextoTitulo" style="color:#fff;"></span> (<span id="continuarContextoQtd">0</span> cenas)
+        </div>
+        <div id="continuarContextoUltimaCena" style="font-size:12px; color:#94a3b8; font-style:italic; border-left:2px solid #8b5cf6; padding-left:8px; margin-top:6px;">
+          <!-- Preenchido dinamicamente com a última cena -->
+        </div>
+      </div>
+
+      <!-- Opções de configuração -->
+      <div style="display:flex; flex-direction:column; gap:12px;">
+        <div class="video-config-row">
+          <label>Quantidade de Novas Cenas:</label>
+          <select id="continuarQtdCenas" style="background:#111317; border:1px solid #333a47; color:#38bdf8; padding:6px 12px; border-radius:6px; font-weight:700; font-family:inherit;">
+            <option value="4">4 Cenas (Rápido / Dinâmico)</option>
+            <option value="5">5 Cenas</option>
+            <option value="6" selected>6 Cenas (Equilibrado / Ideal para Vídeo)</option>
+            <option value="8">8 Cenas (Batalha Longa / Detalhada)</option>
+          </select>
+        </div>
+
+        <div style="text-align:left;">
+          <label style="font-size:12.5px; font-weight:700; color:#cbd5e1; display:block; margin-bottom:5px;">
+            💡 Rumo da Trama / Ideia para a Parte 2 (Opcional):
+          </label>
+          <textarea id="continuarDirecaoTrama" rows="2" placeholder="Ex: Vegeta chega furioso para ajudar, ou o vilão revela que estava usando apenas 50% de poder..." style="width:100%; box-sizing:border-box; background:#0d0e12; border:1px solid #2d3748; border-radius:6px; color:#fff; padding:8px 10px; font-size:12.5px; resize:vertical; font-family:inherit;"></textarea>
+        </div>
+
+        <div style="background:rgba(236, 72, 153, 0.08); border:1px solid rgba(236, 72, 153, 0.3); border-radius:8px; padding:10px 12px; text-align:left; display:flex; align-items:flex-start; gap:10px;">
+          <input type="checkbox" id="continuarCliffhangerCheck" checked style="width:20px; height:20px; accent-color:#ec4899; cursor:pointer; margin-top:2px;">
+          <label for="continuarCliffhangerCheck" style="font-size:12.5px; color:#f472b6; cursor:pointer;">
+            <strong>🔥 Terminar com Cliffhanger (Suspense Máximo):</strong> A última cena terminará em um gancho dramático explosivo que força o público a comentar <em>"posta a Parte 2 logo!"</em>.
+          </label>
+        </div>
+
+        <div class="video-config-row" style="margin-top:2px;">
+          <label>Ação com os Novos Cards:</label>
+          <div style="display:flex; gap:14px; font-size:12.5px; color:#cbd5e1;">
+            <label style="cursor:pointer; display:flex; align-items:center; gap:5px;">
+              <input type="radio" name="continuarModoAcao" value="append" checked style="accent-color:#8b5cf6;">
+              Adicionar ao final da fita
+            </label>
+            <label style="cursor:pointer; display:flex; align-items:center; gap:5px;">
+              <input type="radio" name="continuarModoAcao" value="replace" style="accent-color:#8b5cf6;">
+              Criar como novo projeto (Parte 2)
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex; gap:10px; margin-top:18px;">
+        <button class="btn-secondary" style="flex:1;" onclick="fecharModalContinuarHistoria()">Cancelar</button>
+        <button class="btn-primary" id="btnExecutarContinuacao" style="flex:1.8; justify-content:center; background:linear-gradient(135deg, #8b5cf6, #ec4899); border:none; box-shadow:0 4px 15px rgba(236, 72, 153, 0.4);" onclick="executarContinuacaoHistoria()">
+          ⚡ Gerar Continuação com IA
+        </button>
+      </div>
     </div>
   </div>
 
@@ -2815,6 +2894,206 @@ Prompt: Two round white pods shooting through outer space as a colossal crimson 
       const bar = document.getElementById('geminiResolveFloatingBar');
       if (bar) bar.style.display = 'none';
       mostrarToast("⏹️ O Gemini Resolve foi cancelado pelo usuário.", true);
+    }
+
+    /* ========================================================
+       CONTINUAR HISTÓRIA (MODO PARTE 2 COM IA & CLIFFHANGER)
+       ======================================================== */
+    function abrirModalContinuarHistoria() {
+      const cenasValidas = cards.filter(c => !isCardSubscribeOuMeta(c));
+      if (cenasValidas.length === 0) {
+        mostrarToast("Crie ou gere pelo menos uma história antes de continuar!", true);
+        return;
+      }
+
+      const modal = document.getElementById('modalContinuarHistoria');
+      const tituloEl = document.getElementById('continuarContextoTitulo');
+      const qtdEl = document.getElementById('continuarContextoQtd');
+      const ultimaCenaEl = document.getElementById('continuarContextoUltimaCena');
+
+      const tituloAtual = obterTituloHistoria() || 'História Sem Título';
+      if (tituloEl) tituloEl.innerText = tituloAtual;
+      if (qtdEl) qtdEl.innerText = cenasValidas.length;
+
+      const ultimaCena = cenasValidas[cenasValidas.length - 1];
+      if (ultimaCenaEl && ultimaCena) {
+        const textoResumo = ultimaCena.text ? `"${ultimaCena.text.slice(0, 140)}${ultimaCena.text.length > 140 ? '...' : ''}"` : 'Sem legenda';
+        ultimaCenaEl.innerText = `Última cena (${ultimaCena.title || 'Cena Final'}): ${textoResumo}`;
+      }
+
+      if (modal) modal.style.display = 'flex';
+    }
+
+    function fecharModalContinuarHistoria() {
+      const modal = document.getElementById('modalContinuarHistoria');
+      if (modal) modal.style.display = 'none';
+    }
+
+    async function executarContinuacaoHistoria() {
+      const cenasValidas = cards.filter(c => !isCardSubscribeOuMeta(c));
+      if (cenasValidas.length === 0) {
+        mostrarToast("Crie pelo menos uma cena antes para a IA continuar!", true);
+        return;
+      }
+
+      if (geminiResolveState.isRunning) {
+        mostrarToast("Aguarde a geração atual terminar antes de continuar a história.", true);
+        return;
+      }
+
+      const keyInput = document.getElementById('geminiResolveApiKeyInput');
+      const rawKey = keyInput ? keyInput.value.trim() : '';
+      const activeKey = rawKey || serverEnvConfig.apiKey || localStorage.getItem('matawas_gemini_api_key') || '';
+
+      if (!activeKey) {
+        mostrarToast("Chave da API Gemini não configurada. Defina no arquivo .env ou no modal do Gemini Resolve.", true);
+        return;
+      }
+
+      const btn = document.getElementById('btnExecutarContinuacao');
+      const txtOriginal = btn ? btn.innerHTML : '';
+      if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '⏳ Escrevendo continuação com IA...';
+      }
+
+      const qtdCenas = parseInt(document.getElementById('continuarQtdCenas')?.value || '6', 10);
+      const direcao = document.getElementById('continuarDirecaoTrama')?.value.trim() || '';
+      const cliffhanger = document.getElementById('continuarCliffhangerCheck')?.checked !== false;
+      const modoAcao = document.querySelector('input[name="continuarModoAcao"]:checked')?.value || 'append';
+
+      const tituloAtual = obterTituloHistoria() || 'História de Batalha Anime';
+
+      // Monta resumo das cenas anteriores para enviar como contexto ao Gemini
+      const resumoCenas = cenasValidas.map((c, i) => {
+        return `Cena ${i + 1}:\nLegenda: ${c.text || ''}\nPrompt Visual: ${c._promptOriginal || ''}`;
+      }).join('\n\n');
+
+      const instrucaoDirecao = direcao
+        ? `DIREÇÃO ESPECÍFICA DA TRAMA PARA A PARTE 2:\n${direcao}`
+        : `Crie uma reviravolta ou escalada de ação empolgante que continue organicamente a história.`;
+
+      const instrucaoCliffhanger = cliffhanger
+        ? `REQUISITO OBRIGATÓRIO DE RETENÇÃO (CLIFFHANGER): A última cena (Cena ${qtdCenas}) DEVE terminar com um gancho dramático colossal ou revelação chocante (ex: silhueta misteriosa, poder inimaginável despertando ou ameaça iminente) que corte a ação no clímax mais tenso, forçando o público a comentar "posta a parte 2 logo!".`
+        : `Conclua as cenas com alto impacto de ação.`;
+
+      const llmModel = serverEnvConfig.llmModel || 'gemini-3.8-flash';
+      mostrarToast(`🧠 O ${llmModel} está desenvolvendo a continuação da história...`);
+
+      const promptSystem = `Você é um diretor de animação e roteirista sênior de histórias de anime e mangá (estilo Goku Show e Alternative Dragon Balls).
+A história atual até o momento é:
+Título: ${tituloAtual}
+
+=== HISTÓRIA ATUAL (CENAS ANTERIORES) ===
+${resumoCenas}
+
+=== SUA TAREFA ===
+Escreva a continuação direta e imediata (Parte 2) com EXATAMENTE ${qtdCenas} novas cenas numeradas de 1 a ${qtdCenas}.
+- Mantenha coerência estrita de poderes, personagens e tom épico de anime.
+- ${instrucaoDirecao}
+- ${instrucaoCliffhanger}
+- As legendas (Legenda:) DEVEM ser escritas em inglês moderno, dinâmicas, cinematográficas e de leitura fluida.
+- Os prompts (Prompt:) DEVEM ser descrições ricas em inglês para geração de imagem de anime moderno de alta fidelidade (estilo Toei moderno, Ufotable, traço nítido, iluminação volumétrica, composição cinematográfica, sem referências retrô).
+
+FORMATO OBRIGATÓRIO DE RESPOSTA (retorne ESTRITAMENTE nesse formato, sem textos adicionais antes ou depois):
+Título: ${tituloAtual} - Part 2
+
+Cena 1
+Legenda: [Legenda em inglês]
+Prompt: [Prompt de imagem em inglês]
+
+Cena 2
+Legenda: [Legenda em inglês]
+Prompt: [Prompt de imagem em inglês]`;
+
+      try {
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${llmModel}:generateContent?key=${activeKey}`;
+        const resp = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ role: "user", parts: [{ text: promptSystem }] }]
+          })
+        });
+
+        const data = await resp.json();
+        const textoGerado = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+
+        if (!textoGerado) {
+          throw new Error(data.error?.message || "O Gemini não retornou o roteiro.");
+        }
+
+        const novasCenasParseadas = parsearRoteiroGeminiResolve(textoGerado);
+        if (novasCenasParseadas.length === 0) {
+          throw new Error("Não foi possível identificar as novas cenas no retorno da IA.");
+        }
+
+        fecharModalContinuarHistoria();
+
+        // Modo A: Substituir por novo projeto (Parte 2 do zero)
+        if (modoAcao === 'replace') {
+          const textarea = document.getElementById('geminiResolveTextarea');
+          if (textarea) textarea.value = textoGerado;
+          const radioReplace = document.querySelector('input[name="geminiResolveMode"][value="replace"]');
+          if (radioReplace) radioReplace.checked = true;
+          await executarGeminiResolve();
+        } else {
+          // Modo B: Adicionar à fita atual
+          const timestampBase = Date.now();
+          const offsetCena = cenasValidas.length;
+          let novosCards = novasCenasParseadas.map((cena, idx) => ({
+            id: timestampBase + idx * 10,
+            title: `Cena ${offsetCena + idx + 1}`,
+            image: null,
+            text: cena.legenda,
+            _promptOriginal: cena.prompt,
+            _gerandoIA: true,
+            _statusTexto: '⏳ Na fila da IA...'
+          }));
+
+          novosCards = novosCards.filter(c => {
+            const txt = (c.text || '').trim();
+            const prm = (c._promptOriginal || '').trim();
+            return (txt || prm);
+          });
+
+          cards.push(...novosCards);
+
+          // Atualiza visualização
+          if (typeof thumbState !== 'undefined') thumbState.hasAutoAnalyzed = false;
+          renderEditor();
+          renderPreview();
+          dispararAutoSave();
+
+          // Enfileira novos cards no Gemini Resolve para gerar as imagens automaticamente
+          const novosParaFila = novosCards.filter(c => c._gerandoIA).map(c => ({
+            cardId: c.id,
+            title: c.title,
+            legenda: c.text,
+            prompt: c._promptOriginal
+          }));
+
+          geminiResolveState.queue.push(...novosParaFila);
+          geminiResolveState.total = geminiResolveState.queue.length;
+
+          const bar = document.getElementById('geminiResolveFloatingBar');
+          if (bar) bar.style.display = 'flex';
+
+          mostrarToast(`🎉 ${novosCards.length} novas cenas adicionadas! Gerando ilustrações com IA...`);
+
+          if (!geminiResolveState.isRunning) {
+            processarFilaGeminiResolve(activeKey);
+          }
+        }
+      } catch (err) {
+        console.error("Erro ao continuar história:", err);
+        mostrarToast(`Erro ao gerar continuação: ${err.message || err}`, true);
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.innerHTML = txtOriginal;
+        }
+      }
     }
 
     function renderPreview() {
