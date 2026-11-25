@@ -13,6 +13,23 @@ try {
   } catch (e2) {}
 }
 
+// Helper de traçado para retângulos com cantos arredondados no Worker
+function pathCardArredondado(context, x, y, w, h, r) {
+  if (typeof context.roundRect === 'function') {
+    context.beginPath();
+    context.roundRect(x, y, w, h, r);
+  } else {
+    context.beginPath();
+    context.moveTo(x + r, y);
+    context.lineTo(x + w - r, y);
+    context.arcTo(x + w, y, x + w, y + r, r);
+    context.arcTo(x + w, y + h, x + w - r, y + h, r);
+    context.arcTo(x, y + h, x, y + h - r, r);
+    context.arcTo(x, y, x + r, y, r);
+    context.closePath();
+  }
+}
+
 self.onmessage = async function(e) {
   const data = e.data;
   if (!data) return;
@@ -120,83 +137,121 @@ self.onmessage = async function(e) {
       outCtx.save();
 
       if (isShorts) {
-        // RENDERIZAÇÃO VERTICAL 9:16 PARA YOUTUBE SHORTS (1080x1920)
-        outCtx.fillStyle = '#08090c';
-        outCtx.fillRect(0, 0, 1080, 1920);
-
+        // RENDERIZAÇÃO VERTICAL 9:16 PARA YOUTUBE SHORTS (1080x1920 - ESTEIRA CONTÍNUA CINEMATOGRÁFICA)
         const numCards = cardsData.length;
         if (numCards > 0) {
           const cDur = durPorCard || 5;
+          const cardW = 860;
+          const cardH = 1440;
+          const gap = 50;
+          const step = cardW + gap; // 910px
+          const cY = 160; // Safe zone vertical: 160px topo, 320px rodapé para UI do Shorts
+          const heroX = Math.round((1080 - cardW) / 2); // 110px
+
           const cardIdx = Math.min(numCards - 1, Math.floor(tempo / cDur));
+          const nextIdx = Math.min(numCards - 1, cardIdx + 1);
           const tempoNoCard = tempo - (cardIdx * cDur);
-          const cAtual = cardsData[cardIdx];
-          const cProx = cardIdx < numCards - 1 ? cardsData[cardIdx + 1] : null;
 
-          const cW = 840;
-          const cH = 1408;
-          const cX = 120;
-          const cY = 256;
-
-          const tempoTransicao = 0.35;
-          const emTransicao = tempoNoCard >= (cDur - tempoTransicao) && cProx;
-          const tProgress = emTransicao ? (tempoNoCard - (cDur - tempoTransicao)) / tempoTransicao : 0;
+          // Transição suave com deslize cinematográfico
+          const transDur = Math.min(0.95, cDur * 0.28);
+          const emTransicao = cardIdx < numCards - 1 && tempoNoCard >= (cDur - transDur);
+          const tProgress = emTransicao ? (tempoNoCard - (cDur - transDur)) / transDur : 0;
           const ease = tProgress * tProgress * (3 - 2 * tProgress);
 
-          // 1. Fundo ambiente com a imagem do card atual
-          const bgBmp = cAtual.bitmap;
-          if (bgBmp) {
+          // Cálculo do deslocamento contínuo da câmera pela esteira
+          let currentScrollX = 0;
+          if (cardIdx === numCards - 1) {
+            const pctUltimo = Math.min(1, tempoNoCard / cDur);
+            currentScrollX = (cardIdx * step) + (pctUltimo * 16);
+          } else if (emTransicao) {
+            currentScrollX = (cardIdx * step) + 14 + (ease * (step - 14));
+          } else {
+            const pctLeitura = tempoNoCard / (cDur - transDur);
+            currentScrollX = (cardIdx * step) + (pctLeitura * 14);
+          }
+
+          // 1. Fundo Ambiente Imersivo (Ambient Backdrop preenchendo 1080x1920)
+          outCtx.fillStyle = '#0a0b0e';
+          outCtx.fillRect(0, 0, 1080, 1920);
+
+          const cAtual = cardsData[cardIdx];
+          const cProx = cardsData[nextIdx];
+          const bgImgAtual = cAtual ? cAtual.bitmap : null;
+          const bgImgProx = cProx ? cProx.bitmap : null;
+
+          const zoom = 1.12 + ((tempoNoCard / cDur) * 0.05);
+          const bgW = Math.round(1080 * zoom);
+          const bgH = Math.round(1920 * zoom);
+          const bgX = Math.round((1080 - bgW) / 2);
+          const bgY = Math.round((1920 - bgH) / 2);
+
+          if (bgImgAtual) {
             outCtx.save();
-            outCtx.globalAlpha = 0.22;
-            outCtx.drawImage(bgBmp, -40, -40, 1160, 2000);
+            outCtx.globalAlpha = 0.26 * (1 - (ease * 0.55));
+            outCtx.drawImage(bgImgAtual, bgX, bgY, bgW, bgH);
+            outCtx.restore();
+          }
+          if (ease > 0 && bgImgProx && bgImgProx !== bgImgAtual) {
+            outCtx.save();
+            outCtx.globalAlpha = 0.26 * ease;
+            outCtx.drawImage(bgImgProx, bgX, bgY, bgW, bgH);
             outCtx.restore();
           }
 
-          // Vinheta superior e inferior
+          // Vinheta cinematográfica vertical suave
           const gradV = outCtx.createLinearGradient(0, 0, 0, 1920);
-          gradV.addColorStop(0, 'rgba(0,0,0,0.85)');
-          gradV.addColorStop(0.2, 'rgba(0,0,0,0.4)');
-          gradV.addColorStop(0.8, 'rgba(0,0,0,0.4)');
-          gradV.addColorStop(1, 'rgba(0,0,0,0.92)');
+          gradV.addColorStop(0, 'rgba(8, 10, 14, 0.94)');
+          gradV.addColorStop(0.12, 'rgba(8, 10, 14, 0.55)');
+          gradV.addColorStop(0.5, 'rgba(8, 10, 14, 0.18)');
+          gradV.addColorStop(0.85, 'rgba(8, 10, 14, 0.65)');
+          gradV.addColorStop(1, 'rgba(8, 10, 14, 0.96)');
           outCtx.fillStyle = gradV;
           outCtx.fillRect(0, 0, 1080, 1920);
 
-          // 2. Desenho dos cards centralizados
-          if (emTransicao && cProx && cProx.bitmap) {
-            const shiftX = ease * (cW + 80);
-            if (cAtual.bitmap) {
+          // 2. Renderização dos cards da Esteira Contínua em 9:16
+          const firstIdx = Math.max(0, cardIdx - 1);
+          const lastIdx = Math.min(numCards - 1, cardIdx + 2);
+
+          for (let i = firstIdx; i <= lastIdx; i++) {
+            const cardItem = cardsData[i];
+            if (!cardItem || !cardItem.bitmap) continue;
+            const posX = Math.round(heroX + (i * step) - currentScrollX);
+
+            if (posX + cardW >= -50 && posX <= 1130) {
               outCtx.save();
-              outCtx.globalAlpha = 1 - (ease * 0.4);
-              outCtx.drawImage(cAtual.bitmap, cX - shiftX, cY, cW, cH);
+              outCtx.shadowColor = 'rgba(0, 0, 0, 0.72)';
+              outCtx.shadowBlur = 38;
+              outCtx.shadowOffsetX = 0;
+              outCtx.shadowOffsetY = 14;
+              outCtx.fillStyle = '#14161d';
+              pathCardArredondado(outCtx, posX, cY, cardW, cardH, 24);
+              outCtx.fill();
+              outCtx.restore();
+
+              outCtx.save();
+              pathCardArredondado(outCtx, posX, cY, cardW, cardH, 24);
+              outCtx.clip();
+              outCtx.drawImage(cardItem.bitmap, posX, cY, cardW, cardH);
+              outCtx.strokeStyle = 'rgba(255, 255, 255, 0.14)';
+              outCtx.lineWidth = 2;
+              outCtx.stroke();
               outCtx.restore();
             }
-            outCtx.save();
-            outCtx.globalAlpha = 0.6 + (ease * 0.4);
-            outCtx.drawImage(cProx.bitmap, cX + (cW + 80) - shiftX, cY, cW, cH);
-            outCtx.restore();
-          } else if (cAtual.bitmap) {
-            outCtx.drawImage(cAtual.bitmap, cX, cY, cW, cH);
           }
 
-          // 3. Indicador e barra de progresso no topo do Shorts
-          outCtx.save();
-          outCtx.fillStyle = '#ffffff';
-          outCtx.font = 'bold 28px sans-serif';
-          outCtx.textAlign = 'center';
+          // 3. Título elegante e discreto no topo
           if (tituloHist) {
-            const titCortado = tituloHist.length > 32 ? tituloHist.slice(0, 32) + '...' : tituloHist;
-            outCtx.fillText(titCortado.toUpperCase(), 540, 115);
+            outCtx.save();
+            const titCortado = tituloHist.length > 34 ? tituloHist.slice(0, 34) + '...' : tituloHist;
+            outCtx.font = 'bold 22px sans-serif';
+            outCtx.textAlign = 'center';
+            outCtx.fillStyle = 'rgba(255, 255, 255, 0.82)';
+            outCtx.shadowColor = 'rgba(0, 0, 0, 0.9)';
+            outCtx.shadowBlur = 10;
+            outCtx.shadowOffsetY = 2;
+            outCtx.fillText(titCortado.toUpperCase(), 540, 110);
+            outCtx.restore();
           }
-          outCtx.font = '600 20px sans-serif';
-          outCtx.fillStyle = '#94a3b8';
-          outCtx.fillText(`CENA ${cardIdx + 1} DE ${numCards}`, 540, 155);
-
-          const totalT = duracaoTotal || (numCards * cDur);
-          const pctGeral = Math.min(1, Math.max(0, tempo / totalT));
-          outCtx.fillStyle = 'rgba(255,255,255,0.2)';
-          outCtx.fillRect(60, 185, 960, 6);
-          outCtx.fillStyle = '#ff4757';
-          outCtx.fillRect(60, 185, 960 * pctGeral, 6);
-          outCtx.restore();
         }
 
       } else {

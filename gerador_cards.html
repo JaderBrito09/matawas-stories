@@ -943,6 +943,10 @@
           </select>
         </div>
 
+        <div id="shortsNotice" style="display:none; background:rgba(56, 189, 248, 0.12); border:1px solid rgba(56, 189, 248, 0.35); border-radius:8px; padding:9px 12px; margin: 10px 0; font-size:12.5px; color:#38bdf8; text-align:left;">
+          📱 <strong>Modo Shorts Cinematográfico:</strong> Esteira contínua com deslize suave, fundo ambiente imersivo sincronizado e margens seguras (safe zone) para o feed do YouTube!
+        </div>
+
         <div class="video-config-row" id="rowIntroTransition">
           <label>Transição Oficial dos 3 Cards (Estilo GokuShow):</label>
           <input type="checkbox" id="enableIntroTransition" checked
@@ -3425,11 +3429,13 @@ Prompt: Two round white pods shooting through outer space as a colossal crimson 
       const rowEndScreen = document.getElementById('rowEndScreenDuration');
       const rowSubscribe = document.getElementById('rowSubscribeCard');
       const rowRes = document.getElementById('rowVideoResolution');
+      const notice = document.getElementById('shortsNotice');
 
       if (rowIntro) rowIntro.style.display = isShorts ? 'none' : 'flex';
       if (rowEndScreen) rowEndScreen.style.display = isShorts ? 'none' : 'flex';
       if (rowSubscribe) rowSubscribe.style.display = isShorts ? 'none' : 'flex';
       if (rowRes) rowRes.style.display = isShorts ? 'none' : 'flex';
+      if (notice) notice.style.display = isShorts ? 'block' : 'none';
 
       atualizarTempoEstimado();
     }
@@ -3865,92 +3871,151 @@ ${kit.tags}
       }
     }
 
-    // Desenho Vertical 9:16 para YouTube Shorts
-    function desenharQuadroShortsVertical(ctx, cards, tempo, durPorCard, duracaoTotal) {
-      ctx.fillStyle = '#08090c';
-      ctx.fillRect(0, 0, 1080, 1920);
+    // Helper de traçado para retângulos com cantos arredondados
+    function pathCardArredondado(context, x, y, w, h, r) {
+      if (typeof context.roundRect === 'function') {
+        context.beginPath();
+        context.roundRect(x, y, w, h, r);
+      } else {
+        context.beginPath();
+        context.moveTo(x + r, y);
+        context.lineTo(x + w - r, y);
+        context.arcTo(x + w, y, x + w, y + r, r);
+        context.arcTo(x + w, y + h, x + w - r, y + h, r);
+        context.arcTo(x, y + h, x, y + h - r, r);
+        context.arcTo(x, y, x + r, y, r);
+        context.closePath();
+      }
+    }
 
+    // Desenho Vertical 9:16 para YouTube Shorts (Esteira Contínua com Deslize Suave e Fundo Imersivo)
+    function desenharQuadroShortsVertical(ctx, cards, tempo, durPorCard, duracaoTotal) {
       const numCards = cards.length;
       if (numCards === 0) return;
 
       const cDur = durPorCard || 5;
+      const cardW = 860;
+      const cardH = 1440;
+      const gap = 50;
+      const step = cardW + gap; // 910px
+      const cY = 160; // Safe zone vertical: 160px topo, 320px rodapé para UI do YouTube Shorts
+      const heroX = Math.round((1080 - cardW) / 2); // 110px
+
       const cardIdx = Math.min(numCards - 1, Math.floor(tempo / cDur));
+      const nextIdx = Math.min(numCards - 1, cardIdx + 1);
       const tempoNoCard = tempo - (cardIdx * cDur);
-      const cAtual = cards[cardIdx];
-      const cProx = cardIdx < numCards - 1 ? cards[cardIdx + 1] : null;
 
-      const cW = 840;
-      const cH = 1408;
-      const cX = 120;
-      const cY = 256;
-
-      const tempoTransicao = 0.35;
-      const emTransicao = tempoNoCard >= (cDur - tempoTransicao) && cProx;
-      const tProgress = emTransicao ? (tempoNoCard - (cDur - tempoTransicao)) / tempoTransicao : 0;
+      // Transição suave com deslize cinematográfico estilo Esteira Contínua
+      const transDur = Math.min(0.95, cDur * 0.28);
+      const emTransicao = cardIdx < numCards - 1 && tempoNoCard >= (cDur - transDur);
+      const tProgress = emTransicao ? (tempoNoCard - (cDur - transDur)) / transDur : 0;
       const ease = tProgress * tProgress * (3 - 2 * tProgress);
 
-      // 1. Fundo com a imagem do card
-      if (cAtual._loadedImg) {
+      // Cálculo do deslocamento contínuo da câmera pela esteira
+      let currentScrollX = 0;
+      if (cardIdx === numCards - 1) {
+        // Último card: drift sutil até o encerramento
+        const pctUltimo = Math.min(1, tempoNoCard / cDur);
+        currentScrollX = (cardIdx * step) + (pctUltimo * 16);
+      } else if (emTransicao) {
+        // Deslize suave de transição entre cards
+        currentScrollX = (cardIdx * step) + 14 + (ease * (step - 14));
+      } else {
+        // Fase de leitura do card atual: drift sutil para dinamismo cinematográfico
+        const pctLeitura = tempoNoCard / (cDur - transDur);
+        currentScrollX = (cardIdx * step) + (pctLeitura * 14);
+      }
+
+      // 1. Fundo Ambiente Imersivo (Ambient Backdrop que preenche todo o 1080x1920 sem bordas pretas secas)
+      ctx.fillStyle = '#0a0b0e';
+      ctx.fillRect(0, 0, 1080, 1920);
+
+      const cAtual = cards[cardIdx];
+      const cProx = cards[nextIdx];
+      const bgImgAtual = cAtual?._cachedBitmap || cAtual?._loadedImg;
+      const bgImgProx = cProx?._cachedBitmap || cProx?._loadedImg;
+
+      // Zoom lento dinâmico na arte de fundo
+      const zoom = 1.12 + ((tempoNoCard / cDur) * 0.05);
+      const bgW = Math.round(1080 * zoom);
+      const bgH = Math.round(1920 * zoom);
+      const bgX = Math.round((1080 - bgW) / 2);
+      const bgY = Math.round((1920 - bgH) / 2);
+
+      if (bgImgAtual) {
         ctx.save();
-        ctx.globalAlpha = 0.22;
-        ctx.drawImage(cAtual._loadedImg, -40, -40, 1160, 2000);
+        ctx.globalAlpha = 0.26 * (1 - (ease * 0.55));
+        ctx.drawImage(bgImgAtual, bgX, bgY, bgW, bgH);
         ctx.restore();
-      } else if (cAtual._cachedBitmap) {
+      }
+      if (ease > 0 && bgImgProx && bgImgProx !== bgImgAtual) {
         ctx.save();
-        ctx.globalAlpha = 0.22;
-        ctx.drawImage(cAtual._cachedBitmap, -40, -40, 1160, 2000);
+        ctx.globalAlpha = 0.26 * ease;
+        ctx.drawImage(bgImgProx, bgX, bgY, bgW, bgH);
         ctx.restore();
       }
 
-      // Vinheta
+      // Vinheta cinematográfica vertical suave (foco e contraste com safe zones)
       const gradV = ctx.createLinearGradient(0, 0, 0, 1920);
-      gradV.addColorStop(0, 'rgba(0,0,0,0.85)');
-      gradV.addColorStop(0.2, 'rgba(0,0,0,0.4)');
-      gradV.addColorStop(0.8, 'rgba(0,0,0,0.4)');
-      gradV.addColorStop(1, 'rgba(0,0,0,0.92)');
+      gradV.addColorStop(0, 'rgba(8, 10, 14, 0.94)');
+      gradV.addColorStop(0.12, 'rgba(8, 10, 14, 0.55)');
+      gradV.addColorStop(0.5, 'rgba(8, 10, 14, 0.18)');
+      gradV.addColorStop(0.85, 'rgba(8, 10, 14, 0.65)');
+      gradV.addColorStop(1, 'rgba(8, 10, 14, 0.96)');
       ctx.fillStyle = gradV;
       ctx.fillRect(0, 0, 1080, 1920);
 
-      // 2. Desenho dos cards
-      if (emTransicao && cProx) {
-        const shiftX = ease * (cW + 80);
-        ctx.save();
-        ctx.globalAlpha = 1 - (ease * 0.4);
-        if (cAtual._cachedBitmap) ctx.drawImage(cAtual._cachedBitmap, cX - shiftX, cY, cW, cH);
-        else desenharCardNoCanvas(ctx, cAtual, cX - shiftX, cY, cW, cH);
-        ctx.restore();
+      // 2. Renderização dos cards da Esteira Contínua em 9:16
+      const firstIdx = Math.max(0, cardIdx - 1);
+      const lastIdx = Math.min(numCards - 1, cardIdx + 2);
 
-        ctx.save();
-        ctx.globalAlpha = 0.6 + (ease * 0.4);
-        if (cProx._cachedBitmap) ctx.drawImage(cProx._cachedBitmap, cX + (cW + 80) - shiftX, cY, cW, cH);
-        else desenharCardNoCanvas(ctx, cProx, cX + (cW + 80) - shiftX, cY, cW, cH);
-        ctx.restore();
-      } else {
-        if (cAtual._cachedBitmap) ctx.drawImage(cAtual._cachedBitmap, cX, cY, cW, cH);
-        else desenharCardNoCanvas(ctx, cAtual, cX, cY, cW, cH);
+      for (let i = firstIdx; i <= lastIdx; i++) {
+        const card = cards[i];
+        if (!card) continue;
+        const posX = Math.round(heroX + (i * step) - currentScrollX);
+
+        if (posX + cardW >= -50 && posX <= 1130) {
+          // Sombra profunda para destaque tridimensional
+          ctx.save();
+          ctx.shadowColor = 'rgba(0, 0, 0, 0.72)';
+          ctx.shadowBlur = 38;
+          ctx.shadowOffsetX = 0;
+          ctx.shadowOffsetY = 14;
+          ctx.fillStyle = '#14161d';
+          pathCardArredondado(ctx, posX, cY, cardW, cardH, 24);
+          ctx.fill();
+          ctx.restore();
+
+          // Card com cantos arredondados e borda sutil premium
+          ctx.save();
+          pathCardArredondado(ctx, posX, cY, cardW, cardH, 24);
+          ctx.clip();
+          if (card._cachedBitmap) {
+            ctx.drawImage(card._cachedBitmap, posX, cY, cardW, cardH);
+          } else {
+            desenharCardNoCanvas(ctx, card, posX, cY, cardW, cardH);
+          }
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.14)';
+          ctx.lineWidth = 2;
+          ctx.stroke();
+          ctx.restore();
+        }
       }
 
-      // 3. Indicador e barra de progresso no topo
-      ctx.save();
-      ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 28px Plus Jakarta Sans, sans-serif';
-      ctx.textAlign = 'center';
-      const tituloHist = obterTituloHistoria();
+      // 3. Título sutil e cinematográfico no topo (limpo, sem elementos amadores como "Cena X" ou barras duplicadas)
+      const tituloHist = typeof obterTituloHistoria === 'function' ? obterTituloHistoria() : '';
       if (tituloHist) {
-        const titCortado = tituloHist.length > 32 ? tituloHist.slice(0, 32) + '...' : tituloHist;
-        ctx.fillText(titCortado.toUpperCase(), 540, 115);
+        ctx.save();
+        const titCortado = tituloHist.length > 34 ? tituloHist.slice(0, 34) + '...' : tituloHist;
+        ctx.font = 'bold 22px Plus Jakarta Sans, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.82)';
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.9)';
+        ctx.shadowBlur = 10;
+        ctx.shadowOffsetY = 2;
+        ctx.fillText(titCortado.toUpperCase(), 540, 110);
+        ctx.restore();
       }
-      ctx.font = '600 20px Plus Jakarta Sans, sans-serif';
-      ctx.fillStyle = '#94a3b8';
-      ctx.fillText(`CENA ${cardIdx + 1} DE ${numCards}`, 540, 155);
-
-      const totalT = duracaoTotal || (numCards * cDur);
-      const pctGeral = Math.min(1, Math.max(0, tempo / totalT));
-      ctx.fillStyle = 'rgba(255,255,255,0.2)';
-      ctx.fillRect(60, 185, 960, 6);
-      ctx.fillStyle = '#ff4757';
-      ctx.fillRect(60, 185, 960 * pctGeral, 6);
-      ctx.restore();
     }
     /* ========================================================
        GERADOR DE VÍDEO COMPLETO PARA O YOUTUBE (1920x1080)
