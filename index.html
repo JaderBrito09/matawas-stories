@@ -2738,10 +2738,35 @@ Prompt: Two round white pods shooting through outer space as a colossal crimson 
         return;
       }
 
-      const CONCURRENCY = 3;
+      // Máxima velocidade sem travar a aba:
+      // No Desktop: 6 cards simultâneos (máximo ideal para taxa de transferência sem exceder rate limit da API)
+      // No Celular: 3 cards simultâneos (otimizado para memória RAM de dispositivos móveis)
+      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+      const CONCURRENCY = isMobile ? 3 : 6;
+
       let nextIndex = 0;
       let completedCount = 0;
       const activeItems = new Set();
+
+      // Renderização suave em lotes com requestAnimationFrame (elimina travamentos e congelamentos da aba)
+      let rafRenderPendente = false;
+      function agendarRenderSuave() {
+        if (rafRenderPendente) return;
+        rafRenderPendente = true;
+        requestAnimationFrame(() => {
+          rafRenderPendente = false;
+          renderEditor();
+          renderPreview();
+        });
+      }
+
+      let timerAutoSaveDebounce = null;
+      function dispararAutoSaveDebounced() {
+        if (timerAutoSaveDebounce) clearTimeout(timerAutoSaveDebounce);
+        timerAutoSaveDebounce = setTimeout(() => {
+          dispararAutoSave();
+        }, 1200);
+      }
 
       function atualizarUIProgresso() {
         const titleEl = document.getElementById('geminiResolveStatusTitle');
@@ -2751,7 +2776,7 @@ Prompt: Two round white pods shooting through outer space as a colossal crimson 
 
         const activeTitles = Array.from(activeItems).map(it => it.title).join(', ');
         if (titleEl) titleEl.innerText = `🧠 O Gemini Resolve (${completedCount} de ${total} prontos)`;
-        if (counterEl) counterEl.innerText = `${completedCount}/${total} (⚡ 3 simultâneos)`;
+        if (counterEl) counterEl.innerText = `${completedCount}/${total} (⚡ ${Math.min(CONCURRENCY, total)} simultâneos)`;
         if (sceneEl) {
           sceneEl.innerText = activeTitles
             ? `🎨 Gerando em paralelo: ${activeTitles}...`
@@ -2761,16 +2786,16 @@ Prompt: Two round white pods shooting through outer space as a colossal crimson 
       }
 
       async function worker(workerId) {
-        // Escalonamento inicial leve (350ms) entre workers para não colidir requisições no mesmo instante
+        // Escalonamento inicial leve (120ms) para distribuir as conexões de rede sem engasgo
         if (workerId > 0) {
-          await new Promise(r => setTimeout(r, workerId * 350));
+          await new Promise(r => setTimeout(r, workerId * 120));
         }
 
         while (true) {
           if (geminiResolveState.isCancelled) break;
 
           while (geminiResolveState.isPaused && !geminiResolveState.isCancelled) {
-            await new Promise(r => setTimeout(r, 300));
+            await new Promise(r => setTimeout(r, 200));
           }
           if (geminiResolveState.isCancelled) break;
 
@@ -2789,7 +2814,7 @@ Prompt: Two round white pods shooting through outer space as a colossal crimson 
           const cardAtual = cards.find(c => c.id === item.cardId);
           if (cardAtual) {
             cardAtual._statusTexto = '✨ Criando ilustração...';
-            renderEditor();
+            agendarRenderSuave();
           }
           atualizarUIProgresso();
 
@@ -2805,7 +2830,7 @@ Prompt: Two round white pods shooting through outer space as a colossal crimson 
 
           if (geminiResolveState.isCancelled) break;
 
-          // Atualiza a imagem do card na hora
+          // Atualiza a imagem do card
           const cardFinal = cards.find(c => c.id === item.cardId);
           if (cardFinal) {
             cardFinal._gerandoIA = false;
@@ -2816,22 +2841,21 @@ Prompt: Two round white pods shooting through outer space as a colossal crimson 
             } else {
               cardFinal._statusTexto = '⚠️ Falha na geração';
             }
-            renderEditor();
-            renderPreview();
-            dispararAutoSave();
+            agendarRenderSuave();
+            dispararAutoSaveDebounced();
           }
 
           completedCount++;
           atualizarUIProgresso();
 
-          // Intervalo suave de 300ms antes deste worker puxar o próximo card
+          // Puxa o próximo card imediatamente sem espera ociosa (40ms)
           if (!geminiResolveState.isCancelled && nextIndex < geminiResolveState.queue.length) {
-            await new Promise(r => setTimeout(r, 300));
+            await new Promise(r => setTimeout(r, 40));
           }
         }
       }
 
-      // Dispara até 3 workers paralelos controlados
+      // Dispara até 6 workers paralelos controlados no Desktop (3 no Celular)
       const numWorkers = Math.min(CONCURRENCY, total);
       const workerPromises = [];
       for (let w = 0; w < numWorkers; w++) {
@@ -2839,6 +2863,11 @@ Prompt: Two round white pods shooting through outer space as a colossal crimson 
       }
 
       await Promise.all(workerPromises);
+
+      // Renderização e persistência final garantidas
+      renderEditor();
+      renderPreview();
+      dispararAutoSave();
 
       // Encerramento
       geminiResolveState.isRunning = false;
